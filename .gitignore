@@ -43,3 +43,6 @@ coverage/
 # Misc
 *.tsbuildinfo
 .turbo/
+
+# Claude Code local machine state
+.claude/settings.local.json

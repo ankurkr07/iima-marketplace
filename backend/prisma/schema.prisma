@@ -14,8 +14,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled (pgbouncer) — used at runtime
+  directUrl = env("DIRECT_URL") // direct/session — used for migrations & db push
 }
 
 // ── User ──────────────────────────────────────────────────────────────────
