@@ -1,0 +1,159 @@
+// ─────────────────────────────────────────────────────────────────────────
+//  IIMA Marketplace · Prisma schema
+//
+//  Prototype uses SQLite for zero-setup local development. The schema is
+//  written to be provider-agnostic: switching `provider` to "postgresql"
+//  and updating DATABASE_URL is the ONLY change required to move to Postgres.
+//  Enum-like fields are stored as strings (SQLite has no native enums) with
+//  values constrained in the application layer via Zod + shared constants,
+//  so the same values map cleanly onto Postgres enums later.
+// ─────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── User ──────────────────────────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique // always <username>@iima.ac.in
+  username     String   @unique // the part before @iima.ac.in
+  passwordHash String // random for Google-only accounts
+  googleId     String?  @unique // Google "sub" once linked via OAuth
+  phone        String?
+  whatsapp     String? // primary contact channel
+  batch        String? // e.g. "PGP 2024-26"
+  hostel       String? // e.g. "D-15"
+  roomNumber   String?
+  avatarUrl    String?
+  bio          String?
+  role         String   @default("USER") // USER | ADMIN
+
+  // Contact-visibility preferences. Email is intentionally NOT toggleable —
+  // it is always visible and mandatory.
+  showPhone       Boolean @default(false)
+  showWhatsapp    Boolean @default(true)
+  showRoom        Boolean @default(false)
+  profileCompleted Boolean @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  products      Product[]      @relation("SellerProducts")
+  wishlist      WishlistItem[]
+  sentMessages  Message[]      @relation("SentMessages")
+  conversationsA Conversation[] @relation("ConversationParticipantA")
+  conversationsB Conversation[] @relation("ConversationParticipantB")
+  purchases     Product[]      @relation("BuyerPurchases")
+
+  @@index([email])
+}
+
+// ── Category ──────────────────────────────────────────────────────────────
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  icon      String // emoji or icon key
+  order     Int       @default(0)
+  products  Product[]
+
+  @@index([slug])
+}
+
+// ── Product ───────────────────────────────────────────────────────────────
+model Product {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String   @unique
+  description   String
+  price         Int // stored in whole rupees
+  negotiable    Boolean  @default(true)
+  condition     String   @default("GOOD") // NEW | LIKE_NEW | GOOD | FAIR
+  status        String   @default("AVAILABLE") // AVAILABLE | RESERVED | SOLD
+  images        String // JSON-encoded array of image URLs
+  purchaseDate  String?
+  warranty      String?
+  location      String? // hostel / pickup point
+  preferredContact String @default("CHAT") // CHAT | PHONE | EMAIL
+  featured      Boolean  @default(false)
+  views         Int      @default(0)
+  // Engagement analytics (item: product analytics)
+  emailClicks    Int     @default(0)
+  phoneClicks    Int     @default(0)
+  whatsappClicks Int     @default(0)
+
+  // Denormalized seller contact snapshot kept on the listing is intentionally
+  // avoided — we always read through the seller relation for a single source
+  // of truth.
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  sellerId String
+  seller   User   @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  buyerId String?
+  buyer   User?   @relation("BuyerPurchases", fields: [buyerId], references: [id])
+
+  wishlistedBy WishlistItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  soldAt    DateTime?
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([sellerId])
+  @@index([createdAt])
+}
+
+// ── Wishlist ──────────────────────────────────────────────────────────────
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+// ── Chat (prototype internal messaging) ─────────────────────────────────────
+model Conversation {
+  id           String   @id @default(cuid())
+  participantAId String
+  participantBId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  participantA User @relation("ConversationParticipantA", fields: [participantAId], references: [id], onDelete: Cascade)
+  participantB User @relation("ConversationParticipantB", fields: [participantBId], references: [id], onDelete: Cascade)
+
+  messages Message[]
+
+  @@unique([participantAId, participantBId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}

@@ -1,0 +1,52 @@
+{
+  "name": "iima-marketplace-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API for IIMA Marketplace — the official student marketplace of IIM Ahmedabad.",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "prisma": {
+    "seed": "ts-node --transpile-only prisma/seed.ts"
+  },
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset --force",
+    "setup": "prisma generate && prisma db push && prisma db seed",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "google-auth-library": "^10.9.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^9.0.3",
+    "sharp": "^0.35.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/morgan": "^1.9.9",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^22.9.0",
+    "@types/nodemailer": "^8.0.1",
+    "prisma": "^5.22.0",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.6.3"
+  }
+}

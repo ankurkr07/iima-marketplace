@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-serif: 'Fraunces', Georgia, serif;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-sand text-ink font-sans;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    /* Guard against stray horizontal scroll on mobile from decorative overflow. */
+    overflow-x: hidden;
+  }
+
+  /* Refined, on-brand focus ring — visible for keyboard users, quiet for mouse. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brick-600/60 ring-offset-2 ring-offset-sand;
+  }
+
+  ::selection {
+    @apply bg-brick-600/15 text-brick-800;
+  }
+
+  /* A restrained, warm scrollbar. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-line rounded-full;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-faint;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* Small caps eyebrow label used across sections. */
+  .eyebrow {
+    @apply text-xs font-medium uppercase tracking-[0.18em] text-ink-muted;
+  }
+
+  /* The signature hairline the whole UI is built on — spacing over decoration. */
+  .hairline {
+    @apply border-line;
+  }
+
+  /* Loading shimmer surface. */
+  .shimmer {
+    @apply relative overflow-hidden bg-sand-200;
+  }
+  .shimmer::after {
+    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    content: '';
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.55),
+      transparent
+    );
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .container-page {
+    @apply mx-auto w-full max-w-[1240px] px-5 sm:px-8;
+  }
+  /* Hide the native cursor when the custom cursor is active (desktop, all pages). */
+  .cursor-none,
+  .cursor-none * {
+    cursor: none !important;
+  }
+}
+
+/* Respect users who prefer less motion — kill decorative animation globally. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

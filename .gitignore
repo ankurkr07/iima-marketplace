@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Builds
+dist/
+build/
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Database (SQLite prototype)
+*.db
+*.db-journal
+backend/prisma/dev.db*
+
+# Uploaded product images (keep the folder, ignore its contents)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Testing / coverage
+coverage/
+
+# Misc
+*.tsbuildinfo
+.turbo/
