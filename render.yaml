@@ -8,7 +8,9 @@ services:
     rootDir: backend
     plan: free
     branch: dev
-    buildCommand: npm install && npx prisma generate && npm run build
+    # --include=dev forces devDependencies (@types/*, typescript) to install even
+    # though NODE_ENV=production would otherwise skip them.
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
     # db push keeps the hosted Postgres schema in sync on each deploy (idempotent).
     startCommand: npx prisma db push && npm start
     healthCheckPath: /api/v1/health
