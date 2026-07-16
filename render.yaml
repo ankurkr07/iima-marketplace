@@ -17,10 +17,18 @@ services:
         value: production
       - key: PORT
         value: 4000
-      - key: DATABASE_URL # Postgres connection string (Neon/Supabase)
+      - key: DATABASE_URL # Supabase transaction pooler (6543, ?pgbouncer=true)
+        sync: false
+      - key: DIRECT_URL # Supabase session pooler (5432) — for db push/migrations
         sync: false
       - key: JWT_SECRET
         generateValue: true
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: products
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: ALLOWED_EMAIL_DOMAIN
