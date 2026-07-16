@@ -22,6 +22,8 @@ const nextConfig = {
     remotePatterns: [
       apiPattern,
       { protocol: 'http', hostname: '127.0.0.1' },
+      // Supabase Storage public bucket (production image host).
+      { protocol: 'https', hostname: '*.supabase.co' },
     ],
   },
 };
