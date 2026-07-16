@@ -45,4 +45,14 @@ export const env = {
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? 'IIMA Marketplace <no-reply@iima.ac.in>',
   },
   supportEmail: process.env.SUPPORT_EMAIL ?? 'p26ankur@iima.ac.in',
+
+  // Object storage for uploaded images. When all three are set, uploads go to
+  // Supabase Storage (durable, survives redeploys). Otherwise images are
+  // written to the local `uploads/` folder — fine for local dev, but NOT for
+  // ephemeral hosts like Render.
+  supabase: {
+    url: process.env.SUPABASE_URL ?? '',
+    serviceKey: process.env.SUPABASE_SERVICE_KEY ?? '',
+    bucket: process.env.SUPABASE_BUCKET ?? 'products',
+  },
 } as const;
