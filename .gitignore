@@ -46,3 +46,7 @@ coverage/
 
 # Claude Code local machine state
 .claude/settings.local.json
+
+# Stray process redirect logs
+*.err
+*.out

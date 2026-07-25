@@ -111,14 +111,16 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
     }
   };
 
+  // Only show specs that actually have a value — unset optional fields are
+  // dropped so the grid never leaves an empty row.
   const specs = [
     { label: 'Condition', value: CONDITION_LABELS[product.condition] },
-    { label: 'Category', value: product.category?.name ?? '—' },
-    { label: 'Purchased', value: product.purchaseDate ?? 'Not specified' },
-    { label: 'Warranty', value: product.warranty ?? 'None' },
-    { label: 'Pick-up', value: product.location ?? 'On campus' },
+    { label: 'Category', value: product.category?.name },
+    { label: 'Purchased', value: product.purchaseDate },
+    { label: 'Warranty', value: product.warranty },
+    { label: 'Pick-up', value: product.location },
     { label: 'Negotiable', value: product.negotiable ? 'Yes' : 'Fixed price' },
-  ];
+  ].filter((s): s is { label: string; value: string } => !!s.value);
 
   return (
     <PageTransition>
@@ -164,9 +166,19 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
             <h1 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-ink">
               {product.title}
             </h1>
-            <p className="mt-3 text-3xl font-semibold text-brick-700">
-              {formatPrice(product.price)}
-            </p>
+            <div className="mt-3 flex flex-wrap items-baseline gap-3">
+              <p className="text-3xl font-semibold text-brick-700">{formatPrice(product.price)}</p>
+              {product.marketPrice && product.marketPrice > product.price && (
+                <>
+                  <p className="text-lg text-ink-faint line-through">
+                    {formatPrice(product.marketPrice)}
+                  </p>
+                  <span className="rounded-full bg-brick-50 px-2 py-0.5 text-xs font-medium text-brick-700">
+                    {Math.round((1 - product.price / product.marketPrice) * 100)}% off
+                  </span>
+                </>
+              )}
+            </div>
 
             <p className="mt-6 whitespace-pre-line leading-relaxed text-ink-soft">
               {product.description}
@@ -269,50 +281,62 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
               </div>
             ) : (
               <div className="mt-6 space-y-3">
-                {/* WhatsApp is the primary contact channel. */}
+                {/* WhatsApp is primary when the seller shows it; otherwise email
+                    becomes the primary button so there's never an empty slot. */}
                 {seller?.whatsapp ? (
-                  <a
-                    href={whatsappLink(
-                      seller.whatsapp,
-                      `Hi ${seller.name.split(' ')[0]}, I saw your listing "${product.title}" on IIMA Marketplace. Is it available?`,
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => void trackContact('whatsapp')}
-                  >
-                    <Button size="lg" fullWidth className="bg-[#25D366] text-white hover:bg-[#1EBE5A]">
-                      <WhatsappGlyph /> Chat on WhatsApp
-                    </Button>
-                  </a>
-                ) : (
-                  <a
-                    href={`mailto:${seller?.email}?subject=${encodeURIComponent(`Interested in: ${product.title}`)}`}
-                    onClick={() => void trackContact('email')}
-                  >
-                    <Button size="lg" fullWidth>
-                      Email the seller
-                    </Button>
-                  </a>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  {seller?.phone && (
-                    <a href={`tel:${seller.phone}`} onClick={() => void trackContact('phone')}>
-                      <Button size="md" variant="outline" fullWidth>
-                        Call
+                  <>
+                    <a
+                      href={whatsappLink(
+                        seller.whatsapp,
+                        `Hi ${seller.name.split(' ')[0]}, I saw your listing "${product.title}" on IIMA Marketplace. Is it available?`,
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => void trackContact('whatsapp')}
+                    >
+                      <Button size="lg" fullWidth className="bg-[#25D366] text-white hover:bg-[#1EBE5A]">
+                        <WhatsappGlyph /> Chat on WhatsApp
                       </Button>
                     </a>
-                  )}
-                  <a
-                    href={`mailto:${seller?.email}?subject=${encodeURIComponent(`Interested in: ${product.title}`)}`}
-                    onClick={() => void trackContact('email')}
-                    className={seller?.phone ? '' : 'col-span-2'}
-                  >
-                    <Button size="md" variant="outline" fullWidth>
-                      Email
-                    </Button>
-                  </a>
-                </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {seller.phone && (
+                        <a href={`tel:${seller.phone}`} onClick={() => void trackContact('phone')}>
+                          <Button size="md" variant="outline" fullWidth>
+                            Call
+                          </Button>
+                        </a>
+                      )}
+                      <a
+                        href={`mailto:${seller.email}?subject=${encodeURIComponent(`Interested in: ${product.title}`)}`}
+                        onClick={() => void trackContact('email')}
+                        className={seller.phone ? '' : 'col-span-2'}
+                      >
+                        <Button size="md" variant="outline" fullWidth>
+                          Email
+                        </Button>
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  // No WhatsApp → email is the primary, full-width action.
+                  <>
+                    <a
+                      href={`mailto:${seller?.email}?subject=${encodeURIComponent(`Interested in: ${product.title}`)}`}
+                      onClick={() => void trackContact('email')}
+                    >
+                      <Button size="lg" fullWidth>
+                        Email the seller
+                      </Button>
+                    </a>
+                    {seller?.phone && (
+                      <a href={`tel:${seller.phone}`} onClick={() => void trackContact('phone')}>
+                        <Button size="md" variant="outline" fullWidth>
+                          Call
+                        </Button>
+                      </a>
+                    )}
+                  </>
+                )}
 
                 <div className="grid grid-cols-3 gap-3">
                   <ActionButton onClick={handleSave} label={saved ? 'Saved' : 'Save'} icon="♥" active={saved} />
@@ -323,12 +347,6 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                     icon="⚑"
                   />
                 </div>
-
-                {seller && (
-                  <p className="pt-1 text-center text-xs text-ink-faint">
-                    Email {seller.email} · always reachable
-                  </p>
-                )}
               </div>
             )}
           </div>

@@ -91,9 +91,7 @@ export default function LoginPage() {
               community.
             </p>
           </div>
-          <p className="text-sm text-brick-200">
-            Designed &amp; developed by Ankur Kumar for IIM Ahmedabad
-          </p>
+          <p className="text-sm text-brick-200">Built by Agile CCC for IIM Ahmedabad</p>
         </div>
       </div>
 

@@ -28,6 +28,7 @@ export const createProductSchema = z.object({
   title: z.string().trim().min(3, 'Title is too short').max(120),
   description: z.string().trim().min(10, 'Please add a fuller description').max(4000),
   price: z.coerce.number().int().min(0, 'Price cannot be negative').max(10_000_000),
+  marketPrice: z.coerce.number().int().min(0).max(10_000_000).optional(),
   negotiable: z.boolean().default(true),
   condition: z.enum(PRODUCT_CONDITIONS).default('GOOD'),
   categorySlug: z.string().trim().min(1, 'Choose a category'),

@@ -44,7 +44,7 @@ export function Logo({
           </span>
           {/* Tagline hides on very small screens to keep the header tidy. */}
           <span className="mt-0.5 hidden text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint min-[420px]:block">
-            Campus Buy · Sell · Exchange
+            Campus Buy · Sell
           </span>
         </span>
       )}

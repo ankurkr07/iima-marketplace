@@ -24,6 +24,10 @@ const schema = z.object({
   title: z.string().trim().min(3, 'Give your listing a clear title').max(120),
   description: z.string().trim().min(10, 'Add a few details buyers will want to know').max(4000),
   price: z.coerce.number({ invalid_type_error: 'Enter a price' }).int().min(0).max(10_000_000),
+  marketPrice: z
+    .union([z.coerce.number().int().min(0).max(10_000_000), z.literal('')])
+    .optional()
+    .transform((v) => (v === '' || v === undefined ? undefined : Number(v))),
   categorySlug: z.string().min(1, 'Choose a category'),
   condition: z.enum(['NEW', 'LIKE_NEW', 'GOOD', 'FAIR']),
   negotiable: z.boolean(),
@@ -80,6 +84,7 @@ function SellInner() {
       title: p.title,
       description: p.description,
       price: p.price,
+      marketPrice: p.marketPrice ?? undefined,
       categorySlug: p.category?.slug ?? '',
       condition: p.condition,
       negotiable: p.negotiable,
@@ -224,7 +229,19 @@ function SellInner() {
           <Section title="Price">
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
-                <FieldLabel htmlFor="price">Asking price (₹)</FieldLabel>
+                <FieldLabel htmlFor="marketPrice" hint="MRP / original — optional">
+                  Market price (₹)
+                </FieldLabel>
+                <TextInput
+                  id="marketPrice"
+                  inputMode="numeric"
+                  placeholder="e.g. 10000"
+                  {...register('marketPrice')}
+                />
+                <FieldError message={errors.marketPrice?.message} />
+              </div>
+              <div>
+                <FieldLabel htmlFor="price">Your selling price (₹)</FieldLabel>
                 <TextInput
                   id="price"
                   inputMode="numeric"
@@ -234,11 +251,11 @@ function SellInner() {
                 />
                 <FieldError message={errors.price?.message} />
               </div>
-              <label className="flex cursor-pointer items-center gap-3 self-end rounded-xl border border-line bg-white px-4 py-2.5">
-                <input type="checkbox" className="accent-brick-600" {...register('negotiable')} />
-                <span className="text-sm text-ink-soft">Open to negotiation</span>
-              </label>
             </div>
+            <label className="mt-4 flex w-fit cursor-pointer items-center gap-3 rounded-xl border border-line bg-white px-4 py-2.5">
+              <input type="checkbox" className="accent-brick-600" {...register('negotiable')} />
+              <span className="text-sm text-ink-soft">Open to negotiation</span>
+            </label>
           </Section>
 
           <Section title="Pick-up & contact">

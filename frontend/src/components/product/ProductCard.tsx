@@ -57,7 +57,14 @@ export function ProductCard({ product, priority }: { product: Product; priority?
             <h3 className="line-clamp-1 text-[15px] font-medium leading-snug text-ink transition-colors group-hover:text-brick-700">
               {product.title}
             </h3>
-            <p className="shrink-0 font-semibold text-ink">{formatPrice(product.price)}</p>
+            <div className="shrink-0 text-right">
+              <p className="font-semibold text-ink">{formatPrice(product.price)}</p>
+              {product.marketPrice && product.marketPrice > product.price && (
+                <p className="text-xs text-ink-faint line-through">
+                  {formatPrice(product.marketPrice)}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="mt-1.5 flex items-center gap-2 text-xs text-ink-faint">
