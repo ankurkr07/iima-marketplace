@@ -16,7 +16,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!isAuthenticated) router.replace('/login');
+    if (!isAuthenticated) router.replace('/'); // sign-in lives on the home page
   }, [isLoading, isAuthenticated, router]);
 
   if (isLoading || !isAuthenticated) {

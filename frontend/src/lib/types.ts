@@ -60,6 +60,7 @@ export interface Product {
   slug: string;
   description: string;
   price: number;
+  marketPrice: number | null;
   negotiable: boolean;
   condition: ProductCondition;
   status: ProductStatus;

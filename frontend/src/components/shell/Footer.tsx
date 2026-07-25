@@ -39,7 +39,7 @@ export function Footer() {
           <Logo />
           <p className="mt-4 text-sm leading-relaxed text-ink-muted">
             The official student marketplace of IIM Ahmedabad. A trusted, campus-only space to
-            buy, sell and exchange.
+            buy and sell.
           </p>
         </div>
 
@@ -77,21 +77,7 @@ export function Footer() {
         <div className="container-page flex flex-col items-center justify-between gap-3 py-6 text-center sm:flex-row sm:text-left">
           <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-xs text-ink-faint sm:justify-start">
             <span>
-              Designed &amp; Developed by{' '}
-              <a
-                href="https://linktr.ee/my_launchpad"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-ink-muted underline-offset-2 transition-colors hover:text-brick-700 hover:underline"
-              >
-                Ankur Kumar
-              </a>
-            </span>
-            <span className="text-line" aria-hidden>
-              •
-            </span>
-            <span>
-              Supported by{' '}
+              Built by{' '}
               <a
                 href="https://students.iima.ac.in/ccc/"
                 target="_blank"

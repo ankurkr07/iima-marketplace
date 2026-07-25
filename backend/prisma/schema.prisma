@@ -75,7 +75,8 @@ model Product {
   title         String
   slug          String   @unique
   description   String
-  price         Int // stored in whole rupees
+  price         Int // selling price, in whole rupees
+  marketPrice   Int? // original / market price (MRP), for a strike-through
   negotiable    Boolean  @default(true)
   condition     String   @default("GOOD") // NEW | LIKE_NEW | GOOD | FAIR
   status        String   @default("AVAILABLE") // AVAILABLE | RESERVED | SOLD
