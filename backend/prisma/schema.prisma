@@ -1,27 +1,35 @@
 // ─────────────────────────────────────────────────────────────────────────
 //  IIMA Marketplace · Prisma schema
 //
-//  Prototype uses SQLite for zero-setup local development. The schema is
-//  written to be provider-agnostic: switching `provider` to "postgresql"
-//  and updating DATABASE_URL is the ONLY change required to move to Postgres.
-//  Enum-like fields are stored as strings (SQLite has no native enums) with
-//  values constrained in the application layer via Zod + shared constants,
-//  so the same values map cleanly onto Postgres enums later.
+//  ACTIVE DATABASE: MongoDB (Agile CCC deployment).
+//  Ids use ObjectId (@map("_id")) and every relation scalar field is annotated
+//  @db.ObjectId, as required by Prisma's MongoDB connector.
+//
+//  The previous Supabase/PostgreSQL configuration is kept COMMENTED OUT below
+//  for reference — to switch back, comment the MongoDB datasource and restore
+//  the Postgres one, and revert the id/@db.ObjectId annotations.
 // ─────────────────────────────────────────────────────────────────────────
 
 generator client {
   provider = "prisma-client-js"
 }
 
+// ── Datasource: MongoDB (active) ────────────────────────────────────────────
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL") // pooled (pgbouncer) — used at runtime
-  directUrl = env("DIRECT_URL") // direct/session — used for migrations & db push
+  provider = "mongodb"
+  url      = env("DATABASE_URL") // mongodb+srv://... or mongodb://...
 }
+
+// ── Datasource: Supabase PostgreSQL (previous — kept for reference) ─────────
+// datasource db {
+//   provider  = "postgresql"
+//   url       = env("DATABASE_URL") // pooled (pgbouncer) — used at runtime
+//   directUrl = env("DIRECT_URL")   // direct/session — used for migrations & db push
+// }
 
 // ── User ──────────────────────────────────────────────────────────────────
 model User {
-  id           String   @id @default(cuid())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
   name         String
   email        String   @unique // always <username>@iima.ac.in
   username     String   @unique // the part before @iima.ac.in
@@ -54,24 +62,24 @@ model User {
   conversationsB Conversation[] @relation("ConversationParticipantB")
   purchases     Product[]      @relation("BuyerPurchases")
 
-  @@index([email])
+  // email is @unique above, which already creates an index on MongoDB.
 }
 
 // ── Category ──────────────────────────────────────────────────────────────
 model Category {
-  id        String    @id @default(cuid())
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
   name      String    @unique
   slug      String    @unique
   icon      String // emoji or icon key
   order     Int       @default(0)
   products  Product[]
 
-  @@index([slug])
+  // slug is @unique above, which already creates an index on MongoDB.
 }
 
 // ── Product ───────────────────────────────────────────────────────────────
 model Product {
-  id            String   @id @default(cuid())
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
   title         String
   slug          String   @unique
   description   String
@@ -95,13 +103,13 @@ model Product {
   // Denormalized seller contact snapshot kept on the listing is intentionally
   // avoided — we always read through the seller relation for a single source
   // of truth.
-  categoryId String
+  categoryId String   @db.ObjectId
   category   Category @relation(fields: [categoryId], references: [id])
 
-  sellerId String
+  sellerId String @db.ObjectId
   seller   User   @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
 
-  buyerId String?
+  buyerId String? @db.ObjectId
   buyer   User?   @relation("BuyerPurchases", fields: [buyerId], references: [id])
 
   wishlistedBy WishlistItem[]
@@ -118,9 +126,9 @@ model Product {
 
 // ── Wishlist ──────────────────────────────────────────────────────────────
 model WishlistItem {
-  id        String   @id @default(cuid())
-  userId    String
-  productId String
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  productId String   @db.ObjectId
   createdAt DateTime @default(now())
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -132,9 +140,9 @@ model WishlistItem {
 
 // ── Chat (prototype internal messaging) ─────────────────────────────────────
 model Conversation {
-  id           String   @id @default(cuid())
-  participantAId String
-  participantBId String
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  participantAId String @db.ObjectId
+  participantBId String @db.ObjectId
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -147,9 +155,9 @@ model Conversation {
 }
 
 model Message {
-  id             String   @id @default(cuid())
-  conversationId String
-  senderId       String
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId String   @db.ObjectId
+  senderId       String   @db.ObjectId
   body           String
   readAt         DateTime?
   createdAt      DateTime @default(now())
