@@ -13,10 +13,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/src/index.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
-    "db:reset": "prisma migrate reset --force",
+    "db:reset": "prisma db push --force-reset && prisma db seed",
     "setup": "prisma generate && prisma db push && prisma db seed",
     "typecheck": "tsc --noEmit"
   },
