@@ -103,7 +103,7 @@ model Product {
   purchaseDate  String?
   warranty      String?
   location      String? // hostel / pickup point
-  preferredContact String @default("CHAT") // CHAT | PHONE | EMAIL
+  preferredContact String @default("EMAIL") // EMAIL | PHONE (legacy: CHAT)
   featured      Boolean  @default(false)
   views         Int      @default(0)
   // Engagement analytics (item: product analytics)

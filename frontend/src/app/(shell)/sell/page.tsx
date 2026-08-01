@@ -35,7 +35,7 @@ const schema = z.object({
   location: z.string().trim().max(80).optional(),
   purchaseDate: z.string().trim().max(40).optional(),
   warranty: z.string().trim().max(120).optional(),
-  preferredContact: z.enum(['CHAT', 'PHONE', 'EMAIL']),
+  preferredContact: z.enum(['EMAIL', 'PHONE']),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -72,7 +72,7 @@ function SellInner() {
       condition: 'GOOD',
       negotiable: true,
       images: [],
-      preferredContact: 'CHAT',
+      preferredContact: 'EMAIL',
     },
   });
 
@@ -92,7 +92,8 @@ function SellInner() {
       location: p.location ?? '',
       purchaseDate: p.purchaseDate ?? '',
       warranty: p.warranty ?? '',
-      preferredContact: p.preferredContact,
+      // Old listings may carry the retired 'CHAT' value — fall back to Email.
+      preferredContact: p.preferredContact === 'PHONE' ? 'PHONE' : 'EMAIL',
     });
   }, [existing.data, reset]);
 
@@ -271,9 +272,8 @@ function SellInner() {
               <div>
                 <FieldLabel htmlFor="contact">Preferred contact</FieldLabel>
                 <Select id="contact" {...register('preferredContact')}>
-                  <option value="CHAT">In-app chat</option>
-                  <option value="PHONE">Phone</option>
                   <option value="EMAIL">Email</option>
+                  <option value="PHONE">Phone</option>
                 </Select>
               </div>
             </div>

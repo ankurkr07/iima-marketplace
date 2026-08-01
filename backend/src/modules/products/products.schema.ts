@@ -36,7 +36,9 @@ export const createProductSchema = z.object({
   purchaseDate: z.string().trim().max(40).optional(),
   warranty: z.string().trim().max(120).optional(),
   location: z.string().trim().max(80).optional(),
-  preferredContact: z.enum(CONTACT_METHODS).default('CHAT'),
+  // 'CHAT' is retained in the accepted set for backward-compatibility with old
+  // listings, but new listings default to Email (in-app chat is not available).
+  preferredContact: z.enum(CONTACT_METHODS).default('EMAIL'),
 });
 
 export const updateProductSchema = createProductSchema.partial();

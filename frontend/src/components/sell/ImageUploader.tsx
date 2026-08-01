@@ -7,7 +7,8 @@ import { apiErrorMessage } from '@/lib/api';
 import { useToast } from '@/components/feedback/ToastProvider';
 import { cn } from '@/lib/cn';
 
-const MAX = 8;
+const MAX = 8; // max number of images
+const MAX_MB = 5; // max size per image
 
 /**
  * Drag-and-drop image board. Files are uploaded to the backend immediately and
@@ -37,7 +38,14 @@ export function ImageUploader({
         toast(`You can add up to ${MAX} images`, 'info');
         return;
       }
-      const files = Array.from(fileList).slice(0, remaining);
+      const picked = Array.from(fileList).slice(0, remaining);
+      // Enforce the 5 MB-per-image limit up front, before uploading.
+      const tooBig = picked.filter((f) => f.size > MAX_MB * 1024 * 1024);
+      if (tooBig.length) {
+        toast(`Each image must be under ${MAX_MB} MB`, 'error');
+      }
+      const files = picked.filter((f) => f.size <= MAX_MB * 1024 * 1024);
+      if (files.length === 0) return;
       setUploading(true);
       setProgress(0);
       try {
