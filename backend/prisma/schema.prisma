@@ -65,6 +65,17 @@ model User {
   // email is @unique above, which already creates an index on MongoDB.
 }
 
+// ── Image ───────────────────────────────────────────────────────────────────
+// Product images are stored directly inside MongoDB as base64, so there is no
+// dependency on disk paths, PUBLIC_BASE_URL, or a reverse-proxied /uploads
+// route. Each image is served back through GET /api/v1/images/:id.
+model Image {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  data      String // base64-encoded, already-optimised JPEG bytes
+  mimeType  String   @default("image/jpeg")
+  createdAt DateTime @default(now())
+}
+
 // ── Category ──────────────────────────────────────────────────────────────
 model Category {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
