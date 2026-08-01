@@ -29,6 +29,11 @@ export const env = {
   // images so the frontend can load them directly.
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? `http://localhost:${process.env.PORT ?? 4000}`,
 
+  // Where uploaded images live: 'mongodb' (default) stores them in the DB as
+  // base64 and serves them from /api/v1/images/:id; 'disk' opts into the legacy
+  // local uploads/ folder. Supabase (below) still overrides both when set.
+  imageStore: (process.env.IMAGE_STORE ?? 'mongodb') as 'mongodb' | 'disk',
+
   // Google OAuth (Google Identity Services). The Client ID is not a secret and
   // is also exposed to the browser; only the domain restriction + token
   // verification matter. When unset, a dev-only mock sign-in is enabled.
