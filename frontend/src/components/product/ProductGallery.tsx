@@ -12,24 +12,22 @@ export function ProductGallery({ images, title }: { images: string[]; title: str
 
   return (
     <div>
-      <div className="relative aspect-[4/3] overflow-hidden rounded-card">
+      {/* The board adapts to the photo's proportions — a tall photo gets a
+          taller frame, a wide one a shorter frame — and the whole image fits
+          inside (no cropping), matted on a neutral background. */}
+      <div className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-card bg-sand-100 sm:min-h-[420px]">
         <AnimatePresence mode="wait">
-          <motion.div
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <motion.img
             key={active}
-            initial={{ opacity: 0, scale: 1.02 }}
+            src={safe[active]!}
+            alt={title}
+            initial={{ opacity: 0, scale: 1.01 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0"
-          >
-            <ProductImage
-              src={safe[active]!}
-              alt={title}
-              className="h-full w-full"
-              sizes="(max-width: 1024px) 100vw, 55vw"
-              priority
-            />
-          </motion.div>
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="max-h-[72vh] w-auto max-w-full object-contain"
+          />
         </AnimatePresence>
       </div>
 

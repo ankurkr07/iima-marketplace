@@ -22,7 +22,7 @@ const JPEG_QUALITY = 78;
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024, files: 8 }, // accept up to 8MB raw; we compress it down
+  limits: { fileSize: 5 * 1024 * 1024, files: 8 }, // 5 MB per image; we compress it down after
   fileFilter: (_req, file, cb) => {
     if (ALLOWED.has(file.mimetype)) cb(null, true);
     else cb(new ApiError(400, 'Only image files are allowed'));
@@ -48,7 +48,7 @@ uploadsRouter.post('/', requireAuth, (req, res, next) => {
         const message =
           err instanceof multer.MulterError
             ? err.code === 'LIMIT_FILE_SIZE'
-              ? 'Each image must be under 8 MB'
+              ? 'Each image must be under 5 MB'
               : 'Upload failed — check file count and size'
             : err.message || 'Upload failed';
         throw new ApiError(400, message);

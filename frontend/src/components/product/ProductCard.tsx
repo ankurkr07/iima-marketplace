@@ -28,6 +28,7 @@ export function ProductCard({ product, priority }: { product: Product; priority?
               alt={product.title}
               className="aspect-[4/3]"
               priority={priority}
+              fit="contain"
             />
           </div>
 
