@@ -292,7 +292,7 @@ function Settings() {
   const [privacy, setPrivacy] = useState({
     showWhatsapp: user?.showWhatsapp ?? true,
     showRoom: user?.showRoom ?? false,
-    notifyNewListings: user?.notifyNewListings ?? false,
+    notifyNewListings: user?.notifyNewListings ?? true,
     notifyWishlist: user?.notifyWishlist ?? true,
   });
   const [avatar, setAvatar] = useState<string | null>(user?.avatarUrl ?? null);
