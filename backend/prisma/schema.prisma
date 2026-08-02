@@ -55,9 +55,10 @@ model User {
   showRoom        Boolean @default(false)
   profileCompleted Boolean @default(false)
 
-  // Email notification preferences (used by the automated mailers).
-  notifyNewListings Boolean @default(false) // email me when new items are listed
-  notifyWishlist    Boolean @default(true)  // email me about my wishlisted items
+  // Email notification preferences (used by the automated mailers). Both default
+  // ON — every member receives new-item and wishlist emails unless they opt out.
+  notifyNewListings Boolean @default(true) // email me when new items are listed
+  notifyWishlist    Boolean @default(true) // email me about my wishlisted items
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
