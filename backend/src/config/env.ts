@@ -59,7 +59,9 @@ export const env = {
     pass: process.env.SMTP_PASS ?? '',
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? 'IIMA Marketplace <no-reply@iima.ac.in>',
   },
-  supportEmail: process.env.SUPPORT_EMAIL ?? 'p26ankur@iima.ac.in',
+  // Fully env-driven — no personal address hard-coded. Falls back to the SMTP
+  // sender, then empty. Set SUPPORT_EMAIL in production to control it.
+  supportEmail: process.env.SUPPORT_EMAIL ?? process.env.SMTP_USER ?? '',
 
   // Object storage for uploaded images. When all three are set, uploads go to
   // Supabase Storage (durable, survives redeploys). Otherwise images are
