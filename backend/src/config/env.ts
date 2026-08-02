@@ -29,6 +29,16 @@ export const env = {
   // images so the frontend can load them directly.
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? `http://localhost:${process.env.PORT ?? 4000}`,
 
+  // Public URL of the FRONTEND — used to build clickable product/settings links
+  // inside emails. Defaults to the first CORS origin.
+  appUrl: (process.env.APP_URL ?? process.env.CORS_ORIGIN ?? 'http://localhost:3000')
+    .split(',')[0]!
+    .trim(),
+
+  // Shared secret for the external-cron digest trigger (POST /api/v1/mail/cron/*).
+  // Leave blank to disable the cron endpoint.
+  cronSecret: process.env.CRON_SECRET ?? '',
+
   // Where uploaded images live: 'mongodb' (default) stores them in the DB as
   // base64 and serves them from /api/v1/images/:id; 'disk' opts into the legacy
   // local uploads/ folder. Supabase (below) still overrides both when set.

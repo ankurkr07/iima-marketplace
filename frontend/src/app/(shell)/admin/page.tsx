@@ -185,27 +185,58 @@ function Members() {
   );
 }
 
+const emailInput =
+  'w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brick-600/40';
+
+/** Audience <select> shared by the composer and the digest sender. */
+function AudienceSelect({
+  value,
+  onChange,
+  groups,
+  totalUsers,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  groups: { id: string; label: string; count: number }[];
+  totalUsers?: number;
+}) {
+  return (
+    <select className={emailInput} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="all">All members ({totalUsers ?? '…'})</option>
+      {groups.map((g) => (
+        <option key={g.id} value={g.id}>
+          {g.label} ({g.count})
+        </option>
+      ))}
+      <option value="custom">Custom list…</option>
+    </select>
+  );
+}
+
 function BulkEmail() {
   const { data: overview } = useQuery({ queryKey: ['admin-overview'], queryFn: adminApi.overview });
+  const { data: groups } = useQuery({ queryKey: ['admin-groups'], queryFn: adminApi.groups });
   const { toast } = useToast();
   const [audience, setAudience] = useState('all');
   const [customEmails, setCustomEmails] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [ctaLabel, setCtaLabel] = useState('');
+  const [ctaUrl, setCtaUrl] = useState('');
+
+  const parseCustom = () =>
+    audience === 'custom'
+      ? customEmails.split(/[\n,]/).map((e) => e.trim()).filter(Boolean)
+      : undefined;
 
   const send = useMutation({
     mutationFn: (test: boolean) =>
       adminApi.mail({
         audience,
-        customEmails:
-          audience === 'custom'
-            ? customEmails
-                .split(/[\n,]/)
-                .map((e) => e.trim())
-                .filter(Boolean)
-            : undefined,
+        customEmails: parseCustom(),
         subject,
-        html: `<div style="font-family:Inter,Arial,sans-serif;line-height:1.6;color:#1A1614">${body.replace(/\n/g, '<br/>')}</div>`,
+        body,
+        cta: ctaLabel && ctaUrl ? { label: ctaLabel, url: ctaUrl } : undefined,
         test,
       }),
     onSuccess: (r) =>
@@ -218,110 +249,286 @@ function BulkEmail() {
     onError: (e) => toast(apiErrorMessage(e), 'error'),
   });
 
-  const input =
-    'w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brick-600/40';
-
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-      <section className="rounded-card border border-line bg-white p-6">
-        <h2 className="mb-1 font-serif text-lg text-ink">Compose a bulk email</h2>
-        <p className="mb-5 text-sm text-ink-muted">
-          {overview?.mail.configured
-            ? 'SMTP is live — messages will be delivered.'
-            : 'SMTP not configured — messages are logged to the server console (dev mode).'}
-        </p>
+    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="space-y-6">
+        <section className="rounded-card border border-line bg-white p-6">
+          <h2 className="mb-1 font-serif text-lg text-ink">Compose a bulk email</h2>
+          <p className="mb-5 text-sm text-ink-muted">
+            {overview?.mail.configured
+              ? 'SMTP is live — messages will be delivered, wrapped in the branded template.'
+              : 'SMTP not configured — messages are logged to the server console (dev mode).'}
+          </p>
 
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink-soft">Audience</label>
-            <select className={input} value={audience} onChange={(e) => setAudience(e.target.value)}>
-              <option value="all">All members ({overview?.stats.users ?? '…'})</option>
-              {overview?.mail.groups.map((g) => (
-                <option key={g.key} value={g.key}>
-                  {g.label} ({g.count})
-                </option>
-              ))}
-              <option value="custom">Custom list…</option>
-            </select>
-          </div>
-
-          {audience === 'custom' && (
+          <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink-soft">
-                Email addresses (comma or newline separated)
-              </label>
+              <label className="mb-1.5 block text-sm font-medium text-ink-soft">Audience</label>
+              <AudienceSelect
+                value={audience}
+                onChange={setAudience}
+                groups={groups ?? []}
+                totalUsers={overview?.stats.users}
+              />
+            </div>
+
+            {audience === 'custom' && (
               <textarea
-                className={cn(input, 'min-h-[80px] resize-y')}
+                className={cn(emailInput, 'min-h-[80px] resize-y')}
                 value={customEmails}
                 onChange={(e) => setCustomEmails(e.target.value)}
                 placeholder="one@iima.ac.in, two@iima.ac.in"
               />
+            )}
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink-soft">Subject</label>
+              <input
+                className={emailInput}
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="New on IIMA Marketplace this week"
+              />
             </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink-soft">Message</label>
+              <textarea
+                className={cn(emailInput, 'min-h-[160px] resize-y')}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="Write your announcement… line breaks are preserved."
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                className={emailInput}
+                value={ctaLabel}
+                onChange={(e) => setCtaLabel(e.target.value)}
+                placeholder="Button label (optional)"
+              />
+              <input
+                className={emailInput}
+                value={ctaUrl}
+                onChange={(e) => setCtaUrl(e.target.value)}
+                placeholder="Button link, e.g. https://…"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button onClick={() => send.mutate(false)} disabled={send.isPending || !subject || !body}>
+                {send.isPending ? 'Sending…' : 'Send to audience'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => send.mutate(true)}
+                disabled={send.isPending || !subject || !body}
+              >
+                Send test to myself
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        <DigestSender groups={groups ?? []} totalUsers={overview?.stats.users} />
+      </div>
+
+      <GroupsManager />
+    </div>
+  );
+}
+
+/** Send a "new listings" digest immediately, and show how to automate it. */
+function DigestSender({
+  groups,
+  totalUsers,
+}: {
+  groups: { id: string; label: string; count: number }[];
+  totalUsers?: number;
+}) {
+  const { toast } = useToast();
+  const [audience, setAudience] = useState('all');
+  const [sinceDays, setSinceDays] = useState(7);
+
+  const digest = useMutation({
+    mutationFn: (test: boolean) => adminApi.digest({ audience, sinceDays, test }),
+    onSuccess: (r) =>
+      toast(
+        r.recipients === 0
+          ? `No new items in that window (or no recipients).`
+          : `Digest of ${r.items} item(s) sent to ${r.recipients} recipient(s).`,
+        r.recipients === 0 ? 'info' : 'success',
+      ),
+    onError: (e) => toast(apiErrorMessage(e), 'error'),
+  });
+
+  return (
+    <section className="rounded-card border border-line bg-white p-6">
+      <h2 className="mb-1 font-serif text-lg text-ink">New-listings digest</h2>
+      <p className="mb-5 text-sm text-ink-muted">
+        Send a roundup of items listed recently. Trigger it here, or automate it via
+        <code className="mx-1 text-ink-soft">POST /api/v1/mail/cron/digest</code>
+        from any scheduler.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[180px] flex-1">
+          <label className="mb-1.5 block text-sm font-medium text-ink-soft">Audience</label>
+          <AudienceSelect value={audience} onChange={setAudience} groups={groups} totalUsers={totalUsers} />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-ink-soft">Items from last</label>
+          <select
+            className={emailInput}
+            value={sinceDays}
+            onChange={(e) => setSinceDays(Number(e.target.value))}
+          >
+            <option value={1}>1 day</option>
+            <option value={7}>7 days</option>
+            <option value={14}>14 days</option>
+            <option value={30}>30 days</option>
+          </select>
+        </div>
+      </div>
+      <div className="mt-4 flex gap-3">
+        <Button onClick={() => digest.mutate(false)} disabled={digest.isPending || audience === 'custom'}>
+          {digest.isPending ? 'Sending…' : 'Send digest now'}
+        </Button>
+        <Button variant="outline" onClick={() => digest.mutate(true)} disabled={digest.isPending}>
+          Send test to myself
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+/** Create/delete mailing groups and manage their addresses — no code edits. */
+function GroupsManager() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { data: groups } = useQuery({ queryKey: ['admin-groups'], queryFn: adminApi.groups });
+  const [newGroup, setNewGroup] = useState('');
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['admin-groups'] });
+    qc.invalidateQueries({ queryKey: ['admin-overview'] });
+  };
+
+  const create = useMutation({
+    mutationFn: () => adminApi.createGroup(newGroup.trim()),
+    onSuccess: () => {
+      setNewGroup('');
+      refresh();
+      toast('Group created', 'success');
+    },
+    onError: (e) => toast(apiErrorMessage(e), 'error'),
+  });
+  const del = useMutation({
+    mutationFn: (id: string) => adminApi.deleteGroup(id),
+    onSuccess: () => {
+      refresh();
+      toast('Group deleted', 'success');
+    },
+    onError: (e) => toast(apiErrorMessage(e), 'error'),
+  });
+
+  return (
+    <aside className="space-y-4">
+      <div className="rounded-card border border-line bg-sand-50 p-5">
+        <h3 className="font-serif text-base text-ink">Mailing groups</h3>
+        <p className="mt-1 text-xs text-ink-muted">Create groups and add addresses — all from here.</p>
+
+        <div className="mt-3 flex gap-2">
+          <input
+            className={emailInput}
+            value={newGroup}
+            onChange={(e) => setNewGroup(e.target.value)}
+            placeholder="New group name"
+            onKeyDown={(e) => e.key === 'Enter' && newGroup.trim() && create.mutate()}
+          />
+          <Button onClick={() => create.mutate()} disabled={create.isPending || !newGroup.trim()}>
+            Add
+          </Button>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {(groups ?? []).length === 0 && (
+            <p className="text-sm text-ink-faint">No groups yet — create one above.</p>
           )}
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink-soft">Subject</label>
-            <input
-              className={input}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="New on IIMA Marketplace this week"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink-soft">Message</label>
-            <textarea
-              className={cn(input, 'min-h-[180px] resize-y')}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Write your announcement… line breaks are preserved."
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <Button
-              onClick={() => send.mutate(false)}
-              disabled={send.isPending || !subject || !body}
-            >
-              {send.isPending ? 'Sending…' : 'Send to audience'}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => send.mutate(true)}
-              disabled={send.isPending || !subject || !body}
-            >
-              Send test to myself
-            </Button>
-          </div>
+          {(groups ?? []).map((g) => (
+            <GroupCard key={g.id} group={g} onChanged={refresh} onDelete={() => del.mutate(g.id)} />
+          ))}
         </div>
-      </section>
+      </div>
+    </aside>
+  );
+}
 
-      <aside className="space-y-4">
-        <div className="rounded-card border border-line bg-sand-50 p-5">
-          <h3 className="font-serif text-base text-ink">Mailing groups</h3>
-          <p className="mt-1 text-xs text-ink-muted">
-            Edit named groups in <code className="text-ink-soft">config/mailingGroups.ts</code>.
-          </p>
-          <ul className="mt-3 space-y-1.5 text-sm">
-            {overview?.mail.groups.map((g) => (
-              <li key={g.key} className="flex justify-between text-ink-soft">
-                <span>{g.label}</span>
-                <span className="text-ink-faint">{g.count}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="rounded-card border border-dashed border-line bg-white p-5">
-          <h3 className="text-sm font-medium text-ink-soft">Automated digests</h3>
-          <p className="mt-1 text-sm text-ink-muted">
-            Daily / new-listing digests can run on a scheduler using this same engine.
-          </p>
-          <span className="mt-2 inline-block rounded-full bg-gold/15 px-2.5 py-0.5 text-xs font-medium text-gold">
-            Coming soon
-          </span>
-        </div>
-      </aside>
+function GroupCard({
+  group,
+  onChanged,
+  onDelete,
+}: {
+  group: { id: string; label: string; count: number; emails: string[] };
+  onChanged: () => void;
+  onDelete: () => void;
+}) {
+  const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const add = useMutation({
+    mutationFn: () => adminApi.addEmail(group.id, email.trim()),
+    onSuccess: () => {
+      setEmail('');
+      onChanged();
+    },
+    onError: (e) => toast(apiErrorMessage(e), 'error'),
+  });
+  const remove = useMutation({
+    mutationFn: (addr: string) => adminApi.removeEmail(group.id, addr),
+    onSuccess: onChanged,
+    onError: (e) => toast(apiErrorMessage(e), 'error'),
+  });
+
+  return (
+    <div className="rounded-lg border border-line bg-white p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-ink">
+          {group.label} <span className="text-ink-faint">· {group.count}</span>
+        </span>
+        <button
+          onClick={onDelete}
+          className="text-xs text-brick-600 hover:underline"
+          aria-label={`Delete ${group.label}`}
+        >
+          Delete
+        </button>
+      </div>
+      {group.emails.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {group.emails.map((e) => (
+            <li key={e} className="flex items-center justify-between text-xs text-ink-soft">
+              <span className="truncate">{e}</span>
+              <button
+                onClick={() => remove.mutate(e)}
+                className="ml-2 shrink-0 text-ink-faint hover:text-brick-600"
+                aria-label={`Remove ${e}`}
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-2 flex gap-2">
+        <input
+          className={cn(emailInput, 'py-1.5 text-xs')}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="add@iima.ac.in"
+          onKeyDown={(e) => e.key === 'Enter' && email.trim() && add.mutate()}
+        />
+        <Button onClick={() => add.mutate()} disabled={add.isPending || !email.trim()} className="px-3 py-1.5 text-xs">
+          Add
+        </Button>
+      </div>
     </div>
   );
 }

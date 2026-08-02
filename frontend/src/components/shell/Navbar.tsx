@@ -76,7 +76,8 @@ export function Navbar() {
                       <MenuLink href="/dashboard" label="Dashboard" />
                       <MenuLink href={`/u/${user?.username}`} label="My profile" />
                       <MenuLink href="/wishlist" label="Wishlist" />
-                      <MenuLink href="/messages" label="Messages" />
+                      {/* Messages/in-app chat is not built yet — hidden until it ships.
+                      <MenuLink href="/messages" label="Messages" /> */}
                       {user?.role === 'ADMIN' && <MenuLink href="/admin" label="Admin panel" />}
                       <div className="my-1 h-px bg-line" />
                       <button

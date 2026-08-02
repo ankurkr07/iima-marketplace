@@ -4,6 +4,12 @@ import { ApiError } from '../../utils/ApiError';
 import { toPublicProduct } from '../../utils/serializers';
 import type { CreateProductInput, ListProductsQuery, UpdateProductInput } from './products.schema';
 import type { ProductStatus } from '../../config/constants';
+import { notifyNewListing, notifyWishlistStatusChange } from '../mail/mail.service';
+
+/** Run a notification without blocking (or breaking) the API response. */
+function fireAndForget(work: Promise<unknown>, label: string) {
+  work.catch((e) => console.error(`[mail] ${label} failed:`, e));
+}
 
 /** Relations we consistently hydrate for listing responses. */
 const withCardRelations = {
@@ -125,6 +131,10 @@ export const productsService = {
       },
       include: withCardRelations,
     });
+
+    // Event mail: tell opted-in members a new item was listed.
+    fireAndForget(notifyNewListing(product.id), 'notifyNewListing');
+
     return toPublicProduct(product);
   },
 
@@ -158,6 +168,12 @@ export const productsService = {
       },
       include: withCardRelations,
     });
+
+    // Event mail: a price drop on a wishlisted item.
+    if (input.price !== undefined && input.price < existing.price) {
+      fireAndForget(notifyWishlistStatusChange(id, 'PRICE_DROP'), 'notifyWishlist(price)');
+    }
+
     return toPublicProduct(product);
   },
 
@@ -174,6 +190,12 @@ export const productsService = {
       },
       include: withCardRelations,
     });
+
+    // Event mail: wishlisters hear when an item is reserved or sold.
+    if (status !== existing.status && (status === 'SOLD' || status === 'RESERVED')) {
+      fireAndForget(notifyWishlistStatusChange(id, status), 'notifyWishlist(status)');
+    }
+
     return toPublicProduct(product);
   },
 

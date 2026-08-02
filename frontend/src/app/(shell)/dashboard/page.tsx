@@ -292,6 +292,8 @@ function Settings() {
   const [privacy, setPrivacy] = useState({
     showWhatsapp: user?.showWhatsapp ?? true,
     showRoom: user?.showRoom ?? false,
+    notifyNewListings: user?.notifyNewListings ?? false,
+    notifyWishlist: user?.notifyWishlist ?? true,
   });
   const [avatar, setAvatar] = useState<string | null>(user?.avatarUrl ?? null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -440,6 +442,30 @@ function Settings() {
               value={profile.bio}
               onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
             />
+          </div>
+
+          <div className="rounded-xl border border-line bg-sand-50 p-4">
+            <p className="mb-2 text-sm font-medium text-ink-soft">Email notifications</p>
+            <label className="flex cursor-pointer items-center gap-2.5">
+              <input
+                type="checkbox"
+                className="accent-brick-600"
+                checked={privacy.notifyWishlist}
+                onChange={(e) => setPrivacy((p) => ({ ...p, notifyWishlist: e.target.checked }))}
+              />
+              <span className="text-sm text-ink-muted">
+                Email me when a wishlisted item is reserved, sold, or drops in price
+              </span>
+            </label>
+            <label className="mt-2 flex cursor-pointer items-center gap-2.5">
+              <input
+                type="checkbox"
+                className="accent-brick-600"
+                checked={privacy.notifyNewListings}
+                onChange={(e) => setPrivacy((p) => ({ ...p, notifyNewListings: e.target.checked }))}
+              />
+              <span className="text-sm text-ink-muted">Email me about new listings &amp; weekly digests</span>
+            </label>
           </div>
 
           <Button onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending || uploadingAvatar}>

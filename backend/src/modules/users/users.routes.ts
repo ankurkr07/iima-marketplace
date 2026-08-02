@@ -21,6 +21,8 @@ const updateProfileSchema = z.object({
   showPhone: z.boolean().optional(),
   showWhatsapp: z.boolean().optional(),
   showRoom: z.boolean().optional(),
+  notifyNewListings: z.boolean().optional(),
+  notifyWishlist: z.boolean().optional(),
   profileCompleted: z.boolean().optional(),
 });
 

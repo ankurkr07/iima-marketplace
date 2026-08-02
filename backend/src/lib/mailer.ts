@@ -1,5 +1,18 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 import { env } from '../config/env';
+import { ApiError } from '../utils/ApiError';
+
+/** Turn a raw SMTP failure into a clear, actionable API error (not a 500). */
+function toMailError(e: unknown): ApiError {
+  const err = e as { code?: string; responseCode?: number; message?: string };
+  if (err.code === 'EAUTH' || err.responseCode === 535) {
+    return new ApiError(
+      502,
+      'The email server rejected the login. Check SMTP_USER / SMTP_PASS — for Gmail/Workspace you need a valid App Password (2-Step Verification must be on, and the account must allow app passwords).',
+    );
+  }
+  return new ApiError(502, `Email could not be sent: ${err.message ?? 'SMTP error'}`);
+}
 
 /**
  * Central mail transport. When SMTP is configured (SMTP_HOST + credentials)
@@ -40,13 +53,17 @@ export async function sendMail(msg: MailMessage): Promise<{ sent: boolean }> {
     });
     return { sent: false };
   }
-  await tx.sendMail({
-    from: env.smtp.from,
-    to: Array.isArray(msg.to) ? msg.to.join(',') : msg.to,
-    subject: msg.subject,
-    text: msg.text,
-    html: msg.html,
-  });
+  try {
+    await tx.sendMail({
+      from: env.smtp.from,
+      to: Array.isArray(msg.to) ? msg.to.join(',') : msg.to,
+      subject: msg.subject,
+      text: msg.text,
+      html: msg.html,
+    });
+  } catch (e) {
+    throw toMailError(e);
+  }
   return { sent: true };
 }
 
@@ -68,11 +85,15 @@ export async function sendBulk(
   }
   let sent = 0;
   let batches = 0;
-  for (let i = 0; i < recipients.length; i += batchSize) {
-    const batch = recipients.slice(i, i + batchSize);
-    await tx.sendMail({ from: env.smtp.from, bcc: batch, subject, html });
-    sent += batch.length;
-    batches += 1;
+  try {
+    for (let i = 0; i < recipients.length; i += batchSize) {
+      const batch = recipients.slice(i, i + batchSize);
+      await tx.sendMail({ from: env.smtp.from, bcc: batch, subject, html });
+      sent += batch.length;
+      batches += 1;
+    }
+  } catch (e) {
+    throw toMailError(e);
   }
   return { sent, batches };
 }
