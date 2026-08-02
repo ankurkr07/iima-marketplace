@@ -63,6 +63,14 @@ export const env = {
   // sender, then empty. Set SUPPORT_EMAIL in production to control it.
   supportEmail: process.env.SUPPORT_EMAIL ?? process.env.SMTP_USER ?? '',
 
+  // Fixed recipient(s) that ALWAYS get a "new item listed" email — set entirely
+  // from the environment (comma-separated for multiple), editable in production
+  // with no code change. Leave blank to only notify opted-in members.
+  notifyEmails: (process.env.NOTIFY_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean),
+
   // Object storage for uploaded images. When all three are set, uploads go to
   // Supabase Storage (durable, survives redeploys). Otherwise images are
   // written to the local `uploads/` folder — fine for local dev, but NOT for

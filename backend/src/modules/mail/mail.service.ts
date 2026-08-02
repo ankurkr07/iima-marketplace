@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma';
+import { env } from '../../config/env';
 import { sendBulk } from '../../lib/mailer';
 import { renderEmail, productUrl, preferencesUrl, browseUrl, type EmailBlock } from '../../lib/emailTemplate';
 
@@ -30,7 +31,9 @@ export async function notifyNewListing(productId: string): Promise<void> {
     where: { notifyNewListings: true, id: { not: product.sellerId } },
     select: { email: true },
   });
-  const emails = subscribers.map((u) => u.email);
+  // Fixed env recipient(s) (e.g. a central Agile CCC inbox) always get notified,
+  // in addition to opted-in members. De-duplicated.
+  const emails = [...new Set([...env.notifyEmails, ...subscribers.map((u) => u.email)])];
   if (emails.length === 0) return;
 
   const html = renderEmail({
