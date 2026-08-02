@@ -34,7 +34,11 @@ model User {
   email        String   @unique // always <username>@iima.ac.in
   username     String   @unique // the part before @iima.ac.in
   passwordHash String // random for Google-only accounts
-  googleId     String?  @unique // Google "sub" once linked via OAuth
+  // NOTE: not @unique. On MongoDB a unique index allows only ONE document
+  // missing the field, which would break any second password-only account
+  // (googleId = null). Uniqueness isn't needed here — accounts are matched by
+  // the unique email, and googleId is never queried directly.
+  googleId     String? // Google "sub" once linked via OAuth
   phone        String?
   whatsapp     String? // primary contact channel
   batch        String? // e.g. "PGP 2024-26"
@@ -50,6 +54,10 @@ model User {
   showWhatsapp    Boolean @default(true)
   showRoom        Boolean @default(false)
   profileCompleted Boolean @default(false)
+
+  // Email notification preferences (used by the automated mailers).
+  notifyNewListings Boolean @default(false) // email me when new items are listed
+  notifyWishlist    Boolean @default(true)  // email me about my wishlisted items
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -74,6 +82,17 @@ model Image {
   data      String // base64-encoded, already-optimised JPEG bytes
   mimeType  String   @default("image/jpeg")
   createdAt DateTime @default(now())
+}
+
+// ── MailingGroup ────────────────────────────────────────────────────────────
+// Admin-managed mailing lists. Created and edited entirely from the admin
+// portal (no code changes) — replaces the old hard-coded config/mailingGroups.
+model MailingGroup {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  label     String   @unique
+  emails    String[] // member addresses
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ── Category ──────────────────────────────────────────────────────────────

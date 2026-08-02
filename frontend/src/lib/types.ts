@@ -22,6 +22,8 @@ export interface User {
   showPhone: boolean;
   showWhatsapp: boolean;
   showRoom: boolean;
+  notifyNewListings: boolean;
+  notifyWishlist: boolean;
   profileCompleted: boolean;
   createdAt: string;
 }

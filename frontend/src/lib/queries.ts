@@ -77,7 +77,14 @@ export interface AdminOverview {
     gmv: number;
     listedThisWeek: number;
   };
-  mail: { configured: boolean; groups: { key: string; label: string; count: number }[] };
+  mail: { configured: boolean; groups: MailingGroup[] };
+}
+
+export interface MailingGroup {
+  id: string;
+  label: string;
+  count: number;
+  emails: string[];
 }
 
 export interface AdminUser {
@@ -99,7 +106,8 @@ export const adminApi = {
     audience: string;
     customEmails?: string[];
     subject: string;
-    html: string;
+    body: string;
+    cta?: { label: string; url: string };
     test?: boolean;
   }) =>
     api
@@ -107,6 +115,30 @@ export const adminApi = {
         '/admin/mail',
         payload,
       )
+      .then((r) => r.data),
+
+  // Mailing-group management (admin-managed, no code edits).
+  groups: () => api.get<{ items: MailingGroup[] }>('/admin/mail/groups').then((r) => r.data.items),
+  createGroup: (label: string) =>
+    api.post<MailingGroup>('/admin/mail/groups', { label }).then((r) => r.data),
+  deleteGroup: (id: string) => api.delete(`/admin/mail/groups/${id}`).then((r) => r.data),
+  addEmail: (id: string, email: string) =>
+    api.post<MailingGroup>(`/admin/mail/groups/${id}/emails`, { email }).then((r) => r.data),
+  removeEmail: (id: string, email: string) =>
+    api
+      .delete<MailingGroup>(`/admin/mail/groups/${id}/emails`, { data: { email } })
+      .then((r) => r.data),
+
+  // Send a "new listings" digest now.
+  digest: (payload: {
+    audience: string;
+    customEmails?: string[];
+    sinceDays: number;
+    subject?: string;
+    test?: boolean;
+  }) =>
+    api
+      .post<{ items: number; recipients: number; configured: boolean }>('/admin/mail/digest', payload)
       .then((r) => r.data),
 };
 

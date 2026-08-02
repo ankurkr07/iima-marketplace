@@ -6,6 +6,7 @@ import { usersRouter } from './modules/users/users.routes';
 import { wishlistRouter } from './modules/wishlist/wishlist.routes';
 import { uploadsRouter } from './modules/uploads/uploads.routes';
 import { imagesRouter } from './modules/images/images.routes';
+import { mailRouter } from './modules/mail/mail.routes';
 import { adminRouter } from './modules/admin/admin.routes';
 
 /**
@@ -23,4 +24,5 @@ apiRouter.use('/users', usersRouter);
 apiRouter.use('/wishlist', wishlistRouter);
 apiRouter.use('/uploads', uploadsRouter);
 apiRouter.use('/images', imagesRouter);
+apiRouter.use('/mail', mailRouter);
 apiRouter.use('/admin', adminRouter);
