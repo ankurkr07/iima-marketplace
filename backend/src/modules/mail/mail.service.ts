@@ -1,7 +1,7 @@
 import { prisma } from '../../lib/prisma';
 import { env } from '../../config/env';
 import { sendBulk } from '../../lib/mailer';
-import { renderEmail, productUrl, preferencesUrl, browseUrl, type EmailBlock } from '../../lib/emailTemplate';
+import { renderEmail, productUrl, browseUrl, type EmailBlock } from '../../lib/emailTemplate';
 
 /**
  * Automated, event- and schedule-driven mail. All of these are triggered from
@@ -22,18 +22,14 @@ function productBlock(p: { title: string; slug: string; price: number; images: s
   return { title: p.title, subtitle: rupees(p.price), imageUrl: image, url: productUrl(p.slug) };
 }
 
-/** Fire-and-forget: notify opted-in members that a new item was listed. */
+/** Fire-and-forget: notify the fixed NOTIFY_EMAILS recipients that a new item was listed. */
 export async function notifyNewListing(productId: string): Promise<void> {
   const product = await prisma.product.findUnique({ where: { id: productId } });
   if (!product) return;
 
-  const subscribers = await prisma.user.findMany({
-    where: { notifyNewListings: true, id: { not: product.sellerId } },
-    select: { email: true },
-  });
-  // Fixed env recipient(s) (e.g. a central Agile CCC inbox) always get notified,
-  // in addition to opted-in members. De-duplicated.
-  const emails = [...new Set([...env.notifyEmails, ...subscribers.map((u) => u.email)])];
+  // Send ONLY to the addresses configured in NOTIFY_EMAILS (env) — no member
+  // accounts. Fully controlled from the environment, editable in production.
+  const emails = [...new Set(env.notifyEmails)];
   if (emails.length === 0) return;
 
   const html = renderEmail({
@@ -42,7 +38,6 @@ export async function notifyNewListing(productId: string): Promise<void> {
     intro: `Someone just listed "${product.title}" on the IIMA Marketplace. Take a look before it's gone.`,
     blocks: [productBlock(product)],
     cta: { label: 'View listing', url: productUrl(product.slug) },
-    manageUrl: preferencesUrl(),
   });
   await sendBulk(emails, `New on IIMA Marketplace: ${product.title}`, html);
 }
@@ -76,9 +71,7 @@ export async function notifyWishlistStatusChange(
     preheader: `${product.title} ${copy.verb}`,
     intro: `An item on your wishlist, "${product.title}", ${copy.verb}. It's now ${rupees(product.price)}.`,
     blocks: [productBlock(product)],
-    cta: { label: 'View item', url: productUrl(product.slug) },
-    manageUrl: preferencesUrl(),
-  });
+    cta: { label: 'View item', url: productUrl(product.slug) },  });
   await sendBulk(emails, `Wishlist update: ${product.title}`, html);
 }
 
@@ -107,9 +100,7 @@ export async function sendNewListingsDigest(
     preheader: `${products.length} new item${products.length === 1 ? '' : 's'} from ${label}`,
     intro: `Here ${products.length === 1 ? 'is' : 'are'} ${products.length} new item${products.length === 1 ? '' : 's'} listed in ${label}. Happy hunting!`,
     blocks: products.map(productBlock),
-    cta: { label: 'Browse the marketplace', url: browseUrl() },
-    manageUrl: preferencesUrl(),
-  });
+    cta: { label: 'Browse the marketplace', url: browseUrl() },  });
 
   const subject = subjectOverride?.trim() || `New on IIMA Marketplace — ${products.length} item${products.length === 1 ? '' : 's'}`;
   await sendBulk(recipients, subject, html);

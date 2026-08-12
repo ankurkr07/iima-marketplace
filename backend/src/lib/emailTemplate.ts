@@ -67,9 +67,6 @@ export function renderEmail(o: RenderEmailOptions): string {
          </td></tr>
        </table>`
     : '';
-  const manage = o.manageUrl
-    ? `<a href="${esc(o.manageUrl)}" style="color:#9a8f82;text-decoration:underline">Manage email preferences</a> · `
-    : '';
 
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
@@ -91,7 +88,7 @@ export function renderEmail(o: RenderEmailOptions): string {
         </td></tr>
         <tr><td style="padding:18px 28px;border-top:1px solid ${LINE};background:${SAND}">
           <p style="margin:0;font:400 12px/1.6 Arial,sans-serif;color:#9a8f82">
-            ${manage}Sent by IIMA Marketplace · Built by Agile CCC.
+            Sent by IIMA Marketplace · Built by Agile CCC.
           </p>
         </td></tr>
       </table>
