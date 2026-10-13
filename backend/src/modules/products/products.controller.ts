@@ -10,7 +10,9 @@ export const productsController = {
   },
 
   async getBySlug(req: Request, res: Response) {
-    const result = await productsService.getBySlug(req.params.slug!, { incrementViews: true });
+    const result = await productsService.getBySlug(req.params.slug!, {
+      viewerId: req.user?.id,
+    });
     res.json(result);
   },
 

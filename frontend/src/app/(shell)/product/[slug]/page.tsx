@@ -281,62 +281,97 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
               </div>
             ) : (
               <div className="mt-6 space-y-3">
-                {/* WhatsApp is primary when the seller shows it; otherwise email
-                    becomes the primary button so there's never an empty slot. */}
-                {seller?.whatsapp ? (
-                  <>
-                    <a
-                      href={whatsappLink(
-                        seller.whatsapp,
-                        `Hi ${seller.name.split(' ')[0]}, I saw your listing "${product.title}" on IIMA Marketplace. Is it available?`,
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => void trackContact('whatsapp')}
-                    >
-                      <Button size="lg" fullWidth className="bg-[#25D366] text-white hover:bg-[#1EBE5A]">
-                        <WhatsappGlyph /> Chat on WhatsApp
-                      </Button>
-                    </a>
-                    <div className="grid grid-cols-2 gap-3">
-                      {seller.phone && (
-                        <a href={`tel:${seller.phone}`} onClick={() => void trackContact('phone')}>
+                {(() => {
+                  const hasWhatsapp = !!seller?.whatsapp;
+                  const hasPhone = !!seller?.phone;
+                  // Respect the seller's chosen contact method — Email is
+                  // hidden when they picked Phone, unless it's the only
+                  // channel left to reach them (never leave an empty slot).
+                  const showEmail =
+                    product.preferredContact !== 'PHONE' || (!hasWhatsapp && !hasPhone);
+                  const emailHref = `mailto:${seller?.email}?subject=${encodeURIComponent(`Interested in: ${product.title}`)}`;
+
+                  // WhatsApp is primary when the seller shows it.
+                  if (hasWhatsapp) {
+                    return (
+                      <>
+                        <a
+                          href={whatsappLink(
+                            seller!.whatsapp!,
+                            `Hi ${seller!.name.split(' ')[0]}, I saw your listing "${product.title}" on IIMA Marketplace. Is it available?`,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => void trackContact('whatsapp')}
+                        >
+                          <Button size="lg" fullWidth className="bg-[#25D366] text-white hover:bg-[#1EBE5A]">
+                            <WhatsappGlyph /> Chat on WhatsApp
+                          </Button>
+                        </a>
+                        {(hasPhone || showEmail) && (
+                          <div className="grid grid-cols-2 gap-3">
+                            {hasPhone && (
+                              <a href={`tel:${seller!.phone}`} onClick={() => void trackContact('phone')}>
+                                <Button size="md" variant="outline" fullWidth>
+                                  Call
+                                </Button>
+                              </a>
+                            )}
+                            {showEmail && (
+                              <a
+                                href={emailHref}
+                                onClick={() => void trackContact('email')}
+                                className={hasPhone ? '' : 'col-span-2'}
+                              >
+                                <Button size="md" variant="outline" fullWidth>
+                                  Email
+                                </Button>
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+
+                  // No WhatsApp — Call leads when the seller prefers Phone,
+                  // otherwise Email is the primary action.
+                  if (hasPhone && product.preferredContact === 'PHONE') {
+                    return (
+                      <>
+                        <a href={`tel:${seller!.phone}`} onClick={() => void trackContact('phone')}>
+                          <Button size="lg" fullWidth>
+                            Call the seller
+                          </Button>
+                        </a>
+                        {showEmail && (
+                          <a href={emailHref} onClick={() => void trackContact('email')}>
+                            <Button size="md" variant="outline" fullWidth>
+                              Email
+                            </Button>
+                          </a>
+                        )}
+                      </>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <a href={emailHref} onClick={() => void trackContact('email')}>
+                        <Button size="lg" fullWidth>
+                          Email the seller
+                        </Button>
+                      </a>
+                      {hasPhone && (
+                        <a href={`tel:${seller!.phone}`} onClick={() => void trackContact('phone')}>
                           <Button size="md" variant="outline" fullWidth>
                             Call
                           </Button>
                         </a>
                       )}
-                      <a
-                        href={`mailto:${seller.email}?subject=${encodeURIComponent(`Interested in: ${product.title}`)}`}
-                        onClick={() => void trackContact('email')}
-                        className={seller.phone ? '' : 'col-span-2'}
-                      >
-                        <Button size="md" variant="outline" fullWidth>
-                          Email
-                        </Button>
-                      </a>
-                    </div>
-                  </>
-                ) : (
-                  // No WhatsApp → email is the primary, full-width action.
-                  <>
-                    <a
-                      href={`mailto:${seller?.email}?subject=${encodeURIComponent(`Interested in: ${product.title}`)}`}
-                      onClick={() => void trackContact('email')}
-                    >
-                      <Button size="lg" fullWidth>
-                        Email the seller
-                      </Button>
-                    </a>
-                    {seller?.phone && (
-                      <a href={`tel:${seller.phone}`} onClick={() => void trackContact('phone')}>
-                        <Button size="md" variant="outline" fullWidth>
-                          Call
-                        </Button>
-                      </a>
-                    )}
-                  </>
-                )}
+                    </>
+                  );
+                })()}
 
                 <div className="grid grid-cols-3 gap-3">
                   <ActionButton onClick={handleSave} label={saved ? 'Saved' : 'Save'} icon="♥" active={saved} />

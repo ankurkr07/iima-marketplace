@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { validate } from '../../middleware/validate';
-import { requireAuth } from '../../middleware/auth';
+import { optionalAuth, requireAuth } from '../../middleware/auth';
 import { productsController } from './products.controller';
 import {
   createProductSchema,
@@ -18,6 +18,7 @@ export const productsRouter = Router();
 productsRouter.get('/', validate({ query: listProductsQuery }), asyncHandler(productsController.list));
 productsRouter.get(
   '/:slug',
+  optionalAuth,
   validate({ params: slugParam }),
   asyncHandler(productsController.getBySlug),
 );

@@ -39,14 +39,14 @@ export const productsService = {
 
     if (query.q) {
       where.OR = [
-        { title: { contains: query.q } },
-        { description: { contains: query.q } },
+        { title: { contains: query.q, mode: 'insensitive' } },
+        { description: { contains: query.q, mode: 'insensitive' } },
       ];
     }
     if (query.category) where.category = { slug: query.category };
     if (query.condition) where.condition = query.condition;
     if (query.status) where.status = query.status;
-    if (query.hostel) where.location = { contains: query.hostel };
+    if (query.hostel) where.location = { contains: query.hostel, mode: 'insensitive' };
     if (query.sellerId) where.sellerId = query.sellerId;
     if (query.featured !== undefined) where.featured = query.featured;
     if (query.minPrice !== undefined || query.maxPrice !== undefined) {
@@ -83,14 +83,15 @@ export const productsService = {
     };
   },
 
-  async getBySlug(slug: string, opts: { incrementViews?: boolean } = {}) {
+  async getBySlug(slug: string, opts: { viewerId?: string } = {}) {
     const product = await prisma.product.findUnique({
       where: { slug },
       include: withCardRelations,
     });
     if (!product) throw ApiError.notFound('Listing not found');
 
-    if (opts.incrementViews) {
+    // Don't let the seller's own visits (previewing, editing) inflate views.
+    if (opts.viewerId !== product.sellerId) {
       await prisma.product.update({ where: { id: product.id }, data: { views: { increment: 1 } } });
     }
 
