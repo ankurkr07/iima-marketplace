@@ -33,7 +33,15 @@ const schema = z.object({
   negotiable: z.boolean(),
   images: z.array(z.string()).min(1, 'Add at least one photo').max(8),
   location: z.string().trim().max(80).optional(),
-  purchaseDate: z.string().trim().max(40).optional(),
+  purchaseDate: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^(19|20)\d{2}$/.test(v), 'Enter a valid 4-digit year, e.g. 2023')
+    .refine(
+      (v) => !v || Number(v) <= new Date().getFullYear(),
+      `Year can't be later than ${new Date().getFullYear()}`,
+    ),
   warranty: z.string().trim().max(120).optional(),
   preferredContact: z.enum(['EMAIL', 'PHONE']),
 });
@@ -267,7 +275,15 @@ function SellInner() {
               </div>
               <div>
                 <FieldLabel htmlFor="purchaseDate">Bought in</FieldLabel>
-                <TextInput id="purchaseDate" placeholder="e.g. 2023" {...register('purchaseDate')} />
+                <TextInput
+                  id="purchaseDate"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="e.g. 2023"
+                  error={!!errors.purchaseDate}
+                  {...register('purchaseDate')}
+                />
+                <FieldError message={errors.purchaseDate?.message} />
               </div>
               <div>
                 <FieldLabel htmlFor="contact">Preferred contact</FieldLabel>

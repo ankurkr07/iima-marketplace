@@ -17,7 +17,7 @@ const updateProfileSchema = z.object({
   hostel: z.string().trim().max(40).optional(),
   roomNumber: z.string().trim().max(20).optional(),
   bio: z.string().trim().max(400).optional(),
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: z.string().url().nullable().optional(),
   showPhone: z.boolean().optional(),
   showWhatsapp: z.boolean().optional(),
   showRoom: z.boolean().optional(),

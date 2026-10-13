@@ -284,6 +284,7 @@ function Settings() {
   const [profile, setProfile] = useState({
     name: user?.name ?? '',
     whatsapp: user?.whatsapp ?? '',
+    phone: user?.phone ?? '',
     batch: user?.batch ?? '',
     hostel: user?.hostel ?? '',
     roomNumber: user?.roomNumber ?? '',
@@ -291,6 +292,7 @@ function Settings() {
   });
   const [privacy, setPrivacy] = useState({
     showWhatsapp: user?.showWhatsapp ?? true,
+    showPhone: user?.showPhone ?? true,
     showRoom: user?.showRoom ?? false,
     notifyNewListings: user?.notifyNewListings ?? true,
     notifyWishlist: user?.notifyWishlist ?? true,
@@ -313,9 +315,7 @@ function Settings() {
 
   const saveProfile = useMutation({
     mutationFn: () =>
-      api
-        .patch('/users/me', { ...profile, ...privacy, avatarUrl: avatar ?? undefined })
-        .then((r) => r.data.user),
+      api.patch('/users/me', { ...profile, ...privacy, avatarUrl: avatar }).then((r) => r.data.user),
     onSuccess: (u) => {
       setUser(u);
       toast('Profile saved', 'success');
@@ -391,6 +391,25 @@ function Settings() {
                 onChange={(e) => setPrivacy((p) => ({ ...p, showWhatsapp: e.target.checked }))}
               />
               <span className="text-sm text-ink-muted">Show WhatsApp on my listings</span>
+            </label>
+          </div>
+
+          {/* Phone — needed for "Call" to appear on listings where Phone is
+              the preferred contact method. */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-ink-soft">Phone number</label>
+            <WhatsAppInput
+              value={profile.phone}
+              onChange={(full) => setProfile((p) => ({ ...p, phone: full }))}
+            />
+            <label className="mt-2 flex cursor-pointer items-center gap-2.5">
+              <input
+                type="checkbox"
+                className="accent-brick-600"
+                checked={privacy.showPhone}
+                onChange={(e) => setPrivacy((p) => ({ ...p, showPhone: e.target.checked }))}
+              />
+              <span className="text-sm text-ink-muted">Show phone number on my listings</span>
             </label>
           </div>
 

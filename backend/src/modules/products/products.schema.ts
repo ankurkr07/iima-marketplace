@@ -33,7 +33,12 @@ export const createProductSchema = z.object({
   condition: z.enum(PRODUCT_CONDITIONS).default('GOOD'),
   categorySlug: z.string().trim().min(1, 'Choose a category'),
   images: z.array(z.string().url()).min(1, 'Add at least one image').max(8),
-  purchaseDate: z.string().trim().max(40).optional(),
+  purchaseDate: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^(19|20)\d{2}$/.test(v), 'Enter a valid 4-digit year')
+    .refine((v) => !v || Number(v) <= new Date().getFullYear(), "Year can't be in the future"),
   warranty: z.string().trim().max(120).optional(),
   location: z.string().trim().max(80).optional(),
   // 'CHAT' is retained in the accepted set for backward-compatibility with old

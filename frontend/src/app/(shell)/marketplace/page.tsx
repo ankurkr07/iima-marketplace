@@ -11,7 +11,7 @@ import { ProductCard, ProductCardSkeleton } from '@/components/product/ProductCa
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { PageTransition } from '@/components/shell/PageTransition';
-import type { ProductSort } from '@/lib/types';
+import type { Product, ProductSort } from '@/lib/types';
 
 const SORTS: { value: ProductSort; label: string }[] = [
   { value: 'newest', label: 'Newest first' },
@@ -86,6 +86,18 @@ function MarketplaceInner() {
     queryFn: () => productsApi.list(queryFilters),
     placeholderData: keepPreviousData,
   });
+
+  // "Load more" should append to the list, not replace it. Accumulate pages
+  // during render (not in an effect, which would flash an empty grid for a
+  // frame) keyed off the server's reported page — not local `page` state,
+  // which updates before the corresponding fetch resolves and would
+  // otherwise cause a double-append.
+  const [items, setItems] = useState<Product[]>([]);
+  const [lastData, setLastData] = useState(data);
+  if (data && data !== lastData) {
+    setLastData(data);
+    setItems((prev) => (data.pagination.page === 1 ? data.items : [...prev, ...data.items]));
+  }
 
   const activeCount = Object.values(filters).filter(Boolean).length;
 
@@ -170,14 +182,14 @@ function MarketplaceInner() {
                   <ProductCardSkeleton key={i} />
                 ))}
               </div>
-            ) : data && data.items.length > 0 ? (
+            ) : data && items.length > 0 ? (
               <>
                 <motion.div
                   className={`grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3 ${
                     isPlaceholderData ? 'opacity-60' : ''
                   }`}
                 >
-                  {data.items.map((p, i) => (
+                  {items.map((p, i) => (
                     <ProductCard key={p.id} product={p} priority={i < 3} />
                   ))}
                 </motion.div>
