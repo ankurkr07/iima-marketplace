@@ -49,6 +49,13 @@ export const productsService = {
     if (query.hostel) where.location = { contains: query.hostel, mode: 'insensitive' };
     if (query.sellerId) where.sellerId = query.sellerId;
     if (query.featured !== undefined) where.featured = query.featured;
+    if (query.listingType === 'RENTAL') {
+      where.listingType = 'RENTAL';
+    } else if (query.listingType === 'SALE') {
+      // Existing MongoDB documents predate listingType and must continue to
+      // appear as sale listings until they are edited.
+      where.AND = [{ OR: [{ listingType: 'SALE' }, { listingType: null }] }];
+    }
     if (query.minPrice !== undefined || query.maxPrice !== undefined) {
       where.price = {
         ...(query.minPrice !== undefined ? { gte: query.minPrice } : {}),
@@ -119,6 +126,10 @@ export const productsService = {
         slug: slugify(input.title),
         description: input.description,
         price: input.price,
+        listingType: input.listingType,
+        rentalRateUnit: input.listingType === 'RENTAL' ? input.rentalRateUnit : null,
+        rentalAvailableFrom: input.listingType === 'RENTAL' && input.rentalAvailableFrom ? new Date(input.rentalAvailableFrom) : null,
+        rentalAvailableUntil: input.listingType === 'RENTAL' && input.rentalAvailableUntil ? new Date(input.rentalAvailableUntil) : null,
         marketPrice: input.marketPrice,
         negotiable: input.negotiable,
         condition: input.condition,
@@ -157,6 +168,10 @@ export const productsService = {
         title: input.title,
         description: input.description,
         price: input.price,
+        listingType: input.listingType,
+        rentalRateUnit: input.listingType === 'SALE' ? null : input.rentalRateUnit,
+        rentalAvailableFrom: input.listingType === 'SALE' ? null : input.rentalAvailableFrom ? new Date(input.rentalAvailableFrom) : undefined,
+        rentalAvailableUntil: input.listingType === 'SALE' ? null : input.rentalAvailableUntil ? new Date(input.rentalAvailableUntil) : undefined,
         marketPrice: input.marketPrice,
         negotiable: input.negotiable,
         condition: input.condition,

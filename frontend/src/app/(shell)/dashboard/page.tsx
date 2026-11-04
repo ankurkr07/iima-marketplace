@@ -43,8 +43,10 @@ function DashboardInner() {
   const wishlist = useQuery({ queryKey: qk.wishlist, queryFn: wishlistApi.list, enabled: !!user });
 
   const items = listings.data?.items ?? [];
-  const sold = items.filter((p) => p.status === 'SOLD');
-  const available = items.filter((p) => p.status !== 'SOLD');
+  const sold = items.filter((p) => p.status === 'SOLD' && p.listingType !== 'RENTAL');
+  const available = items.filter((p) =>
+    p.listingType === 'RENTAL' ? p.status === 'AVAILABLE' : p.status !== 'SOLD',
+  );
 
   const stats = useMemo(
     () => [

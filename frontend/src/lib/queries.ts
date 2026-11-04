@@ -31,6 +31,7 @@ export interface ProductFilters {
   limit?: number;
   featured?: boolean;
   sellerId?: string;
+  listingType?: 'SALE' | 'RENTAL';
 }
 
 export const productsApi = {

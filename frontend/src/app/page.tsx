@@ -99,7 +99,7 @@ export default function LandingPage() {
               {...reveal(2)}
               className="mt-5 font-serif text-display font-semibold text-ink text-balance"
             >
-              Buy. Sell. <span className="text-brick-700">Within campus.</span>
+              Buy. Sell. Rent. <span className="text-brick-700">Within campus.</span>
             </motion.h1>
 
             <motion.p {...reveal(3)} className="mt-5 max-w-lg text-lg leading-relaxed text-ink-muted">

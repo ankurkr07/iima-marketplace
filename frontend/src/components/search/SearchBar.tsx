@@ -43,7 +43,7 @@ export function SearchBar() {
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
           onKeyDown={(e) => e.key === 'Enter' && submit(value)}
-          placeholder="Search books, cycles, laptops…"
+          placeholder="Search books, bikes, laptops…"
           className="w-full bg-transparent text-sm text-ink placeholder:text-ink-faint focus:outline-none"
           aria-label="Search the marketplace"
         />

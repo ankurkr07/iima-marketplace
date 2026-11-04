@@ -18,12 +18,12 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: {
-    default: 'IIMA Marketplace — Campus Buy. Sell.',
+    default: 'IIMA Marketplace — Campus Buy. Sell. Rent.',
     template: '%s · IIMA Marketplace',
   },
   description:
-    'The official student marketplace of IIM Ahmedabad. Buy and sell products within campus — safely, among verified students.',
-  keywords: ['IIM Ahmedabad', 'marketplace', 'campus', 'students', 'buy', 'sell'],
+    'The official student marketplace of IIM Ahmedabad. Buy, sell, and rent products within campus — among verified students.',
+  keywords: ['IIM Ahmedabad', 'marketplace', 'campus', 'students', 'buy', 'sell', 'rent'],
   authors: [{ name: 'Agile CCC' }],
 };
 

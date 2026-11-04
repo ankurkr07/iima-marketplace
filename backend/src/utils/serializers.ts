@@ -34,6 +34,7 @@ export const toPublicProduct = (product: ProductWithRelations) => {
   const { images, seller, ...rest } = product;
   return {
     ...rest,
+    listingType: product.listingType ?? 'SALE',
     images: parseImages(images),
     category: product.category ?? undefined,
     seller: seller ? toPublicSellerCard(seller) : undefined,

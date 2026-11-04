@@ -78,7 +78,7 @@ export function renderEmail(o: RenderEmailOptions): string {
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border:1px solid ${LINE};border-radius:16px;overflow:hidden">
         <tr><td style="padding:22px 28px;border-bottom:1px solid ${LINE}">
           <span style="font:700 18px Georgia,serif;color:${BRICK}">IIMA Marketplace</span>
-          <span style="font:400 12px Arial,sans-serif;color:#9a8f82;letter-spacing:.08em"> &nbsp;· CAMPUS BUY · SELL</span>
+          <span style="font:400 12px Arial,sans-serif;color:#9a8f82;letter-spacing:.08em"> &nbsp;· CAMPUS BUY · SELL · RENT</span>
         </td></tr>
         <tr><td style="padding:26px 28px">
           <h1 style="margin:0 0 12px;font:600 22px/1.25 Georgia,serif;color:${INK}">${esc(o.title)}</h1>

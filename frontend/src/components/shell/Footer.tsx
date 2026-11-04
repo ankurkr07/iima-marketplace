@@ -39,7 +39,7 @@ export function Footer() {
           <Logo />
           <p className="mt-4 text-sm leading-relaxed text-ink-muted">
             The official student marketplace of IIM Ahmedabad. A trusted, campus-only space to
-            buy and sell.
+            buy, sell, and rent.
           </p>
         </div>
 

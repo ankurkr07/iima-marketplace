@@ -115,6 +115,10 @@ model Product {
   slug          String   @unique
   description   String
   price         Int // selling price, in whole rupees
+  listingType   String?  @default("SALE") // SALE | RENTAL; nullable for pre-rental documents
+  rentalRateUnit String? // HOUR | DAY
+  rentalAvailableFrom DateTime?
+  rentalAvailableUntil DateTime?
   marketPrice   Int? // original / market price (MRP), for a strike-through
   negotiable    Boolean  @default(true)
   condition     String   @default("GOOD") // NEW | LIKE_NEW | GOOD | FAIR

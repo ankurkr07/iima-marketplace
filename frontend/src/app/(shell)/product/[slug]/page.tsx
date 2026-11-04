@@ -9,6 +9,7 @@ import { productsApi, qk, wishlistApi } from '@/lib/queries';
 import { formatPrice, memberSince, timeAgo, whatsappLink, CONDITION_LABELS } from '@/lib/format';
 import { ProductGallery } from '@/components/product/ProductGallery';
 import { ProductCard } from '@/components/product/ProductCard';
+import type { Product } from '@/lib/types';
 import { StatusBadge } from '@/components/ui/Badge';
 import { apiErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
@@ -83,6 +84,8 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   const { product, related } = data;
   const seller = product.seller;
   const sold = product.status === 'SOLD';
+  const rentalUnavailable = product.listingType === 'RENTAL' && product.status !== 'AVAILABLE';
+  const unavailable = sold || rentalUnavailable;
   const isOwner = isAuthenticated && !!user && seller?.id === user.id;
 
   // Fire-and-forget engagement tracking for the seller's analytics.
@@ -114,12 +117,22 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   // Only show specs that actually have a value — unset optional fields are
   // dropped so the grid never leaves an empty row.
   const specs = [
+    { label: 'Listing type', value: product.listingType === 'RENTAL' ? 'Rental' : 'For sale' },
     { label: 'Condition', value: CONDITION_LABELS[product.condition] },
     { label: 'Category', value: product.category?.name },
     { label: 'Purchased', value: product.purchaseDate },
     { label: 'Warranty', value: product.warranty },
     { label: 'Pick-up', value: product.location },
-    { label: 'Negotiable', value: product.negotiable ? 'Yes' : 'Fixed price' },
+    ...(product.listingType !== 'RENTAL'
+      ? [{ label: 'Negotiable', value: product.negotiable ? 'Yes' : 'Fixed price' }]
+      : []),
+    ...(product.listingType === 'RENTAL'
+      ? [
+          { label: 'Rental rate', value: `${formatPrice(product.price)} / ${product.rentalRateUnit === 'HOUR' ? 'hour' : 'day'}` },
+          { label: 'Available from', value: product.rentalAvailableFrom ? new Date(product.rentalAvailableFrom).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '' },
+          { label: 'Available until', value: product.rentalAvailableUntil ? new Date(product.rentalAvailableUntil).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '' },
+        ]
+      : []),
   ].filter((s): s is { label: string; value: string } => !!s.value);
 
   return (
@@ -155,8 +168,11 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
           <div>
             <div className="flex items-center gap-2">
               <StatusBadge status={product.status} />
-              {product.negotiable && !sold && (
+              {product.listingType !== 'RENTAL' && product.negotiable && !sold && (
                 <span className="text-xs font-medium text-gold">Negotiable</span>
+              )}
+              {product.listingType === 'RENTAL' && (
+                <span className="rounded-full bg-brick-50 px-2.5 py-1 text-[11px] font-medium text-brick-700">For rent</span>
               )}
               <span className="ml-auto text-xs text-ink-faint">
                 {product.views} views · listed {timeAgo(product.createdAt)}
@@ -167,8 +183,10 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
               {product.title}
             </h1>
             <div className="mt-3 flex flex-wrap items-baseline gap-3">
-              <p className="text-3xl font-semibold text-brick-700">{formatPrice(product.price)}</p>
-              {product.marketPrice && product.marketPrice > product.price && (
+              <p className="text-3xl font-semibold text-brick-700">
+                {formatPrice(product.price)}{product.listingType === 'RENTAL' ? ` / ${product.rentalRateUnit === 'HOUR' ? 'hour' : 'day'}` : ''}
+              </p>
+              {product.listingType !== 'RENTAL' && product.marketPrice && product.marketPrice > product.price && (
                 <>
                   <p className="text-lg text-ink-faint line-through">
                     {formatPrice(product.marketPrice)}
@@ -244,7 +262,9 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                             : 'border-line bg-white text-ink-muted hover:border-ink-faint'
                         }`}
                       >
-                        {s.charAt(0) + s.slice(1).toLowerCase()}
+                        {product.listingType === 'RENTAL' && s === 'SOLD'
+                          ? 'Unavailable'
+                          : s.charAt(0) + s.slice(1).toLowerCase()}
                       </button>
                     ))}
                   </div>
@@ -265,10 +285,14 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                   </Button>
                 </div>
               </div>
-            ) : sold ? (
+            ) : unavailable ? (
               <div className="mt-6 space-y-3">
                 <div className="rounded-card border border-line bg-sand-100 p-5 text-center text-sm text-ink-muted">
-                  This item has been marked as sold by the seller.
+                  {product.listingType === 'RENTAL'
+                    ? product.status === 'RESERVED'
+                      ? 'The owner has temporarily paused requests for this rental.'
+                      : 'The owner has marked this rental as unavailable.'
+                    : 'This item has been marked as sold by the seller.'}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <ActionButton onClick={handleSave} label={saved ? 'Saved' : 'Save'} icon="♥" active={saved} />
@@ -279,6 +303,17 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
                   />
                 </div>
               </div>
+            ) : product.listingType === 'RENTAL' ? (
+              <RentalRequest
+                product={product}
+                sellerName={seller?.name ?? 'there'}
+                whatsapp={seller?.whatsapp ?? null}
+                onContact={() => void trackContact('whatsapp')}
+                saved={saved}
+                onSave={handleSave}
+                onShare={share}
+                onReport={() => toast('Report received. Our team will review it.', 'success')}
+              />
             ) : (
               <div className="mt-6 space-y-3">
                 {(() => {
@@ -401,6 +436,94 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
       </div>
     </PageTransition>
   );
+}
+
+function RentalRequest({
+  product,
+  sellerName,
+  whatsapp,
+  onContact,
+  saved,
+  onSave,
+  onShare,
+  onReport,
+}: {
+  product: Product;
+  sellerName: string;
+  whatsapp: string | null;
+  onContact: () => void;
+  saved: boolean;
+  onSave: () => void;
+  onShare: () => void;
+  onReport: () => void;
+}) {
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [offer, setOffer] = useState('');
+  const availableFrom = product.rentalAvailableFrom ? new Date(product.rentalAvailableFrom) : null;
+  const availableUntil = product.rentalAvailableUntil ? new Date(product.rentalAvailableUntil) : null;
+  const minStart = availableFrom ? toLocalDateTimeInput(Math.max(Date.now(), availableFrom.getTime())) : '';
+  const maxEnd = availableUntil ? toLocalDateTimeInput(availableUntil.getTime()) : '';
+  const startDate = start ? new Date(start) : null;
+  const endDate = end ? new Date(end) : null;
+  const valid = Boolean(
+    whatsapp && startDate && endDate && Number(offer) > 0 &&
+      availableFrom && availableUntil &&
+      startDate.getTime() >= Math.max(Date.now(), availableFrom.getTime()) &&
+      endDate.getTime() > startDate.getTime() && endDate.getTime() <= availableUntil.getTime(),
+  );
+
+  const sendRequest = () => {
+    if (!valid || !whatsapp || !startDate || !endDate) return;
+    const dateOptions: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' };
+    const message = [
+      `Hi ${sellerName.split(' ')[0]}, I'm interested in renting "${product.title}" from IIMA Marketplace.`,
+      `Requested time: ${startDate.toLocaleString('en-IN', dateOptions)} to ${endDate.toLocaleString('en-IN', dateOptions)}.`,
+      `My proposed total amount: ₹${Number(offer).toLocaleString('en-IN')}.`,
+      'Please confirm whether this time is still available and the final rental terms.',
+    ].join('\n');
+    onContact();
+    window.open(whatsappLink(whatsapp, message), '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div className="mt-6 space-y-4 rounded-card border border-line bg-sand-50 p-5">
+      <div>
+        <h2 className="font-serif text-xl text-ink">Request this rental</h2>
+        <p className="mt-1 text-sm text-ink-muted">
+          Choose a time inside the owner’s availability and enter your proposed total. The owner confirms through WhatsApp; this request does not reserve the item.
+        </p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="text-sm font-medium text-ink-soft">
+          Start date & time
+          <input className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm" type="datetime-local" min={minStart} max={maxEnd} value={start} onChange={(event) => setStart(event.target.value)} />
+        </label>
+        <label className="text-sm font-medium text-ink-soft">
+          End date & time
+          <input className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm" type="datetime-local" min={start || minStart} max={maxEnd} value={end} onChange={(event) => setEnd(event.target.value)} />
+        </label>
+      </div>
+      <label className="block text-sm font-medium text-ink-soft">
+        Your proposed total (₹)
+        <input className="mt-1.5 w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm" type="number" min="1" step="1" inputMode="numeric" placeholder="Enter your offer" value={offer} onChange={(event) => setOffer(event.target.value)} />
+      </label>
+      {!whatsapp && <p className="text-xs text-ink-muted">The owner has not made a WhatsApp number visible on this listing.</p>}
+      <Button size="lg" fullWidth disabled={!valid} onClick={sendRequest}>
+        <WhatsappGlyph /> Request on WhatsApp
+      </Button>
+      <div className="grid grid-cols-3 gap-3">
+        <ActionButton onClick={onSave} label={saved ? 'Saved' : 'Save'} icon="♥" active={saved} />
+        <ActionButton onClick={onShare} label="Share" icon="↗" />
+        <ActionButton onClick={onReport} label="Report" icon="⚑" />
+      </div>
+    </div>
+  );
+}
+
+function toLocalDateTimeInput(timestamp: number) {
+  const local = new Date(timestamp - new Date(timestamp).getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
 }
 
 function Metric({ label, value }: { label: string; value: number }) {

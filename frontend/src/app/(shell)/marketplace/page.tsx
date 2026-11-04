@@ -29,6 +29,7 @@ function MarketplaceInner() {
 
   const q = params.get('q') ?? undefined;
   const sort = (params.get('sort') as ProductSort) ?? 'newest';
+  const listingType = params.get('type') === 'RENTAL' ? 'RENTAL' : params.get('type') === 'SALE' ? 'SALE' : undefined;
 
   const filters: Filters = useMemo(
     () => ({
@@ -79,6 +80,7 @@ function MarketplaceInner() {
     hostel: filters.hostel,
     minPrice: filters.minPrice ? Number(filters.minPrice) : undefined,
     maxPrice: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+    listingType,
   };
 
   const { data, isLoading, isPlaceholderData } = useQuery({
@@ -130,6 +132,21 @@ function MarketplaceInner() {
 
           <section>
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="flex w-fit rounded-full border border-line bg-white p-1">
+                {([
+                  { value: undefined, label: 'All listings' },
+                  { value: 'SALE', label: 'For sale' },
+                  { value: 'RENTAL', label: 'For rent' },
+                ] as const).map((option) => (
+                  <button
+                    key={option.label}
+                    onClick={() => setParams({ type: option.value })}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${listingType === option.value ? 'bg-brick-600 text-white' : 'text-ink-muted hover:text-ink'}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
               <p className="text-sm text-ink-muted">
                 {data ? (
                   <>

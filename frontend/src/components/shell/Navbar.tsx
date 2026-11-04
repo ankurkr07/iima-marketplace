@@ -38,11 +38,11 @@ export function Navbar() {
             <>
               {/* Full button on larger screens; compact + on mobile. */}
               <Button size="sm" onClick={() => router.push('/sell')} className="hidden sm:inline-flex">
-                Sell an item
+                List an item
               </Button>
               <Link
                 href="/sell"
-                aria-label="Sell an item"
+                aria-label="List an item"
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brick-600 text-white transition-colors hover:bg-brick-700 sm:hidden"
               >
                 <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
@@ -71,7 +71,7 @@ export function Navbar() {
                     >
                       {/* Sell is a button on larger screens; surface it here for mobile. */}
                       <div className="sm:hidden">
-                        <MenuLink href="/sell" label="Sell an item" />
+                        <MenuLink href="/sell" label="List an item" />
                       </div>
                       <MenuLink href="/dashboard" label="Dashboard" />
                       <MenuLink href={`/u/${user?.username}`} label="My profile" />

@@ -36,7 +36,7 @@ export function ProductCard({ product, priority }: { product: Product; priority?
           {sold && (
             <div className="absolute inset-0 grid place-items-center bg-ink/45 backdrop-blur-[1px]">
               <span className="rotate-[-6deg] rounded-md border border-white/70 px-4 py-1.5 font-serif text-lg font-semibold tracking-wide text-white">
-                SOLD
+                {product.listingType === 'RENTAL' ? 'UNAVAILABLE' : 'SOLD'}
               </span>
             </div>
           )}
@@ -59,7 +59,9 @@ export function ProductCard({ product, priority }: { product: Product; priority?
               {product.title}
             </h3>
             <div className="shrink-0 text-right">
-              <p className="font-semibold text-ink">{formatPrice(product.price)}</p>
+              <p className="font-semibold text-ink">
+                {formatPrice(product.price)}{product.listingType === 'RENTAL' ? ` / ${product.rentalRateUnit === 'HOUR' ? 'hour' : 'day'}` : ''}
+              </p>
               {product.marketPrice && product.marketPrice > product.price && (
                 <p className="text-xs text-ink-faint line-through">
                   {formatPrice(product.marketPrice)}
@@ -69,6 +71,9 @@ export function ProductCard({ product, priority }: { product: Product; priority?
           </div>
 
           <div className="mt-1.5 flex items-center gap-2 text-xs text-ink-faint">
+            {product.listingType === 'RENTAL' && (
+              <span className="rounded-full bg-brick-50 px-2 py-0.5 font-medium text-brick-700">For rent</span>
+            )}
             <ConditionBadge condition={product.condition} />
             {product.location && (
               <>

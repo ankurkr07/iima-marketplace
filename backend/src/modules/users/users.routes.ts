@@ -40,7 +40,13 @@ usersRouter.get(
         include: { category: true, seller: true },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.product.count({ where: { sellerId: user.id, status: 'SOLD' } }),
+      prisma.product.count({
+        where: {
+          sellerId: user.id,
+          status: 'SOLD',
+          AND: [{ OR: [{ listingType: 'SALE' }, { listingType: null }] }],
+        },
+      }),
     ]);
 
     res.json({

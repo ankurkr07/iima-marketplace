@@ -24,19 +24,21 @@ async function listGroups() {
 adminRouter.get(
   '/overview',
   asyncHandler(async (_req, res) => {
-    const [users, products, sold, reserved, agg, recent] = await Promise.all([
+    const salesOnly = { OR: [{ listingType: 'SALE' }, { listingType: null }] };
+    const [users, products, sold, reserved, available, agg, recent] = await Promise.all([
       prisma.user.count(),
       prisma.product.count(),
-      prisma.product.count({ where: { status: 'SOLD' } }),
+      prisma.product.count({ where: { status: 'SOLD', AND: [salesOnly] } }),
       prisma.product.count({ where: { status: 'RESERVED' } }),
-      prisma.product.aggregate({ _sum: { price: true }, where: { status: 'SOLD' } }),
+      prisma.product.count({ where: { status: 'AVAILABLE' } }),
+      prisma.product.aggregate({ _sum: { price: true }, where: { status: 'SOLD', AND: [salesOnly] } }),
       prisma.product.count({ where: { createdAt: { gte: new Date(Date.now() - 7 * 864e5) } } }),
     ]);
     res.json({
       stats: {
         users,
         products,
-        available: products - sold - reserved,
+        available,
         reserved,
         sold,
         gmv: agg._sum.price ?? 0,

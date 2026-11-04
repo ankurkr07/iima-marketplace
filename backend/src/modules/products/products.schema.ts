@@ -22,12 +22,17 @@ export const listProductsQuery = z.object({
     .enum(['true', 'false'])
     .transform((v) => v === 'true')
     .optional(),
+  listingType: z.enum(['SALE', 'RENTAL']).optional(),
 });
 
-export const createProductSchema = z.object({
+const productFields = z.object({
   title: z.string().trim().min(3, 'Title is too short').max(120),
   description: z.string().trim().min(10, 'Please add a fuller description').max(4000),
   price: z.coerce.number().int().min(0, 'Price cannot be negative').max(10_000_000),
+  listingType: z.enum(['SALE', 'RENTAL']).default('SALE'),
+  rentalRateUnit: z.enum(['HOUR', 'DAY']).optional(),
+  rentalAvailableFrom: z.string().datetime().optional(),
+  rentalAvailableUntil: z.string().datetime().optional(),
   marketPrice: z.coerce.number().int().min(0).max(10_000_000).optional(),
   negotiable: z.boolean().default(true),
   condition: z.enum(PRODUCT_CONDITIONS).default('GOOD'),
@@ -46,7 +51,32 @@ export const createProductSchema = z.object({
   preferredContact: z.enum(CONTACT_METHODS).default('EMAIL'),
 });
 
-export const updateProductSchema = createProductSchema.partial();
+const validateRental = (value: Partial<z.infer<typeof productFields>>, ctx: z.RefinementCtx) => {
+  if (value.listingType !== 'RENTAL') return;
+  if (value.price !== undefined && value.price <= 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['price'], message: 'Rental rate must be greater than zero' });
+  }
+  if (!value.rentalRateUnit) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalRateUnit'], message: 'Choose an hourly or daily rate' });
+  }
+  if (!value.rentalAvailableFrom || !value.rentalAvailableUntil) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalAvailableFrom'], message: 'Set the start and end of your availability' });
+    return;
+  }
+  if (new Date(value.rentalAvailableUntil) <= new Date(value.rentalAvailableFrom)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalAvailableUntil'], message: 'Availability must end after it starts' });
+  }
+  if (new Date(value.rentalAvailableFrom) <= new Date()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalAvailableFrom'], message: 'Availability must start in the future' });
+  }
+};
+
+export const createProductSchema = productFields.superRefine(validateRental);
+export const updateProductSchema = productFields.partial().superRefine((value, ctx) => {
+  if (value.listingType === 'RENTAL' || value.rentalAvailableFrom || value.rentalAvailableUntil || value.rentalRateUnit) {
+    validateRental({ ...value, listingType: value.listingType ?? 'RENTAL' }, ctx);
+  }
+});
 
 export const updateStatusSchema = z.object({
   status: z.enum(PRODUCT_STATUSES),

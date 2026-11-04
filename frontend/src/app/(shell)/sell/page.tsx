@@ -24,6 +24,10 @@ const schema = z.object({
   title: z.string().trim().min(3, 'Give your listing a clear title').max(120),
   description: z.string().trim().min(10, 'Add a few details buyers will want to know').max(4000),
   price: z.coerce.number({ invalid_type_error: 'Enter a price' }).int().min(0).max(10_000_000),
+  listingType: z.enum(['SALE', 'RENTAL']),
+  rentalRateUnit: z.enum(['HOUR', 'DAY']).optional(),
+  rentalAvailableFrom: z.string().optional(),
+  rentalAvailableUntil: z.string().optional(),
   marketPrice: z
     .union([z.coerce.number().int().min(0).max(10_000_000), z.literal('')])
     .optional()
@@ -44,10 +48,29 @@ const schema = z.object({
     ),
   warranty: z.string().trim().max(120).optional(),
   preferredContact: z.enum(['EMAIL', 'PHONE']),
+}).superRefine((value, ctx) => {
+  if (value.listingType !== 'RENTAL') return;
+  if (value.price <= 0) ctx.addIssue({ code: 'custom', path: ['price'], message: 'Rental rate must be greater than zero' });
+  if (!value.rentalRateUnit) ctx.addIssue({ code: 'custom', path: ['rentalRateUnit'], message: 'Choose an hourly or daily rate' });
+  if (!value.rentalAvailableFrom) ctx.addIssue({ code: 'custom', path: ['rentalAvailableFrom'], message: 'Choose when availability starts' });
+  if (!value.rentalAvailableUntil) ctx.addIssue({ code: 'custom', path: ['rentalAvailableUntil'], message: 'Choose when availability ends' });
+  if (value.rentalAvailableFrom && value.rentalAvailableUntil && new Date(value.rentalAvailableUntil) <= new Date(value.rentalAvailableFrom)) {
+    ctx.addIssue({ code: 'custom', path: ['rentalAvailableUntil'], message: 'End must be after the start' });
+  }
+  if (value.rentalAvailableFrom && new Date(value.rentalAvailableFrom) <= new Date()) {
+    ctx.addIssue({ code: 'custom', path: ['rentalAvailableFrom'], message: 'Availability must start in the future' });
+  }
 });
 type FormValues = z.infer<typeof schema>;
 
 const CONDITIONS = Object.keys(CONDITION_LABELS) as ProductCondition[];
+
+function toLocalDateTime(value: string | null | undefined) {
+  if (!value) return '';
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
 
 function SellInner() {
   const { isAuthenticated, isLoading } = useRequireAuth();
@@ -81,6 +104,7 @@ function SellInner() {
       negotiable: true,
       images: [],
       preferredContact: 'EMAIL',
+      listingType: 'SALE',
     },
   });
 
@@ -92,6 +116,10 @@ function SellInner() {
       title: p.title,
       description: p.description,
       price: p.price,
+      listingType: p.listingType ?? 'SALE',
+      rentalRateUnit: p.rentalRateUnit ?? undefined,
+      rentalAvailableFrom: toLocalDateTime(p.rentalAvailableFrom),
+      rentalAvailableUntil: toLocalDateTime(p.rentalAvailableUntil),
       marketPrice: p.marketPrice ?? undefined,
       categorySlug: p.category?.slug ?? '',
       condition: p.condition,
@@ -107,9 +135,18 @@ function SellInner() {
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) =>
-      isEditing
-        ? productsApi.update(existing.data!.product.id, values)
-        : productsApi.create(values),
+      (() => {
+        const payload = {
+          ...values,
+          marketPrice: values.listingType === 'RENTAL' ? undefined : values.marketPrice,
+          rentalAvailableFrom: values.listingType === 'RENTAL' && values.rentalAvailableFrom ? new Date(values.rentalAvailableFrom).toISOString() : undefined,
+          rentalAvailableUntil: values.listingType === 'RENTAL' && values.rentalAvailableUntil ? new Date(values.rentalAvailableUntil).toISOString() : undefined,
+          rentalRateUnit: values.listingType === 'RENTAL' ? values.rentalRateUnit : undefined,
+        };
+        return isEditing
+          ? productsApi.update(existing.data!.product.id, payload)
+          : productsApi.create(payload);
+      })(),
     onSuccess: (product) => {
       toast(isEditing ? 'Listing updated' : 'Your listing is live!', 'success');
       router.push(`/product/${product.slug}`);
@@ -157,12 +194,13 @@ function SellInner() {
   }
 
   const values = watch();
+  const isRental = values.listingType === 'RENTAL';
 
   return (
     <PageTransition>
       <div className="container-page max-w-3xl py-10">
         <header className="mb-8">
-          <p className="eyebrow">{isEditing ? 'Edit listing' : 'Sell an item'}</p>
+          <p className="eyebrow">{isEditing ? 'Edit listing' : 'Buy, sell or rent on campus'}</p>
           <h1 className="mt-2 font-serif text-3xl tracking-tight text-ink">
             {isEditing ? 'Update your listing' : 'Create a listing'}
           </h1>
@@ -185,6 +223,14 @@ function SellInner() {
 
           <Section title="Details">
             <div className="space-y-5">
+              <div>
+                <FieldLabel htmlFor="listingType">What are you listing?</FieldLabel>
+                <Select id="listingType" {...register('listingType')}>
+                  <option value="SALE">For sale</option>
+                  <option value="RENTAL">For rent</option>
+                </Select>
+                <p className="mt-1.5 text-xs text-ink-faint">Rentals are inquiries only. You confirm availability and the final arrangement directly.</p>
+              </div>
               <div>
                 <FieldLabel htmlFor="title">Title</FieldLabel>
                 <TextInput
@@ -236,36 +282,75 @@ function SellInner() {
           </Section>
 
           <Section title="Price">
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <FieldLabel htmlFor="marketPrice" hint="MRP / original — optional">
-                  Market price (₹)
-                </FieldLabel>
-                <TextInput
-                  id="marketPrice"
-                  inputMode="numeric"
-                  placeholder="e.g. 10000"
-                  {...register('marketPrice')}
-                />
-                <FieldError message={errors.marketPrice?.message} />
+            {isRental ? (
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <FieldLabel htmlFor="price">Rental rate (₹)</FieldLabel>
+                  <TextInput id="price" inputMode="numeric" placeholder="e.g. 300" error={!!errors.price} {...register('price')} />
+                  <FieldError message={errors.price?.message} />
+                </div>
+                <div>
+                  <FieldLabel htmlFor="rentalRateUnit">Charge per</FieldLabel>
+                  <Select id="rentalRateUnit" error={!!errors.rentalRateUnit} {...register('rentalRateUnit')}>
+                    <option value="">Choose a unit</option>
+                    <option value="HOUR">Hour</option>
+                    <option value="DAY">Day</option>
+                  </Select>
+                  <FieldError message={errors.rentalRateUnit?.message} />
+                </div>
               </div>
-              <div>
-                <FieldLabel htmlFor="price">Your selling price (₹)</FieldLabel>
-                <TextInput
-                  id="price"
-                  inputMode="numeric"
-                  placeholder="0"
-                  error={!!errors.price}
-                  {...register('price')}
-                />
-                <FieldError message={errors.price?.message} />
-              </div>
-            </div>
-            <label className="mt-4 flex w-fit cursor-pointer items-center gap-3 rounded-xl border border-line bg-white px-4 py-2.5">
-              <input type="checkbox" className="accent-brick-600" {...register('negotiable')} />
-              <span className="text-sm text-ink-soft">Open to negotiation</span>
-            </label>
+            ) : (
+              <>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <FieldLabel htmlFor="marketPrice" hint="MRP / original — optional">
+                      Market price (₹)
+                    </FieldLabel>
+                    <TextInput
+                      id="marketPrice"
+                      inputMode="numeric"
+                      placeholder="e.g. 10000"
+                      {...register('marketPrice')}
+                    />
+                    <FieldError message={errors.marketPrice?.message} />
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor="price">Your selling price (₹)</FieldLabel>
+                    <TextInput
+                      id="price"
+                      inputMode="numeric"
+                      placeholder="0"
+                      error={!!errors.price}
+                      {...register('price')}
+                    />
+                    <FieldError message={errors.price?.message} />
+                  </div>
+                </div>
+                <label className="mt-4 flex w-fit cursor-pointer items-center gap-3 rounded-xl border border-line bg-white px-4 py-2.5">
+                  <input type="checkbox" className="accent-brick-600" {...register('negotiable')} />
+                  <span className="text-sm text-ink-soft">Open to negotiation</span>
+                </label>
+              </>
+            )}
           </Section>
+
+          {isRental && (
+            <Section title="Rental availability">
+              <p className="mb-4 text-sm text-ink-muted">Set the continuous period when you can rent this item out. Renters can request a shorter time within this window.</p>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <FieldLabel htmlFor="rentalAvailableFrom">Available from</FieldLabel>
+                  <TextInput id="rentalAvailableFrom" type="datetime-local" min={toLocalDateTime(new Date().toISOString())} error={!!errors.rentalAvailableFrom} {...register('rentalAvailableFrom')} />
+                  <FieldError message={errors.rentalAvailableFrom?.message} />
+                </div>
+                <div>
+                  <FieldLabel htmlFor="rentalAvailableUntil">Available until</FieldLabel>
+                  <TextInput id="rentalAvailableUntil" type="datetime-local" min={values.rentalAvailableFrom || toLocalDateTime(new Date().toISOString())} error={!!errors.rentalAvailableUntil} {...register('rentalAvailableUntil')} />
+                  <FieldError message={errors.rentalAvailableUntil?.message} />
+                </div>
+              </div>
+            </Section>
+          )}
 
           <Section title="Pick-up & contact">
             <div className="grid gap-5 sm:grid-cols-3">
@@ -273,7 +358,7 @@ function SellInner() {
                 <FieldLabel htmlFor="location">Pick-up point</FieldLabel>
                 <TextInput id="location" placeholder="e.g. D-15" {...register('location')} />
               </div>
-              <div>
+              {!isRental && <div>
                 <FieldLabel htmlFor="purchaseDate">Bought in</FieldLabel>
                 <TextInput
                   id="purchaseDate"
@@ -284,7 +369,7 @@ function SellInner() {
                   {...register('purchaseDate')}
                 />
                 <FieldError message={errors.purchaseDate?.message} />
-              </div>
+              </div>}
               <div>
                 <FieldLabel htmlFor="contact">Preferred contact</FieldLabel>
                 <Select id="contact" {...register('preferredContact')}>
