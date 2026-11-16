@@ -1,16 +1,14 @@
 import { Router } from 'express';
 import { env } from '../../config/env';
-import { prisma } from '../../lib/prisma';
 import { ApiError } from '../../utils/ApiError';
 import { asyncHandler } from '../../utils/asyncHandler';
-import { sendNewListingsDigest } from './mail.service';
+import { runScheduledNewListingsDigest } from './mail.service';
 
 /**
- * External-cron entry point for the periodic digest. A cron service (server
- * crontab, Windows Task Scheduler, GitHub Actions, cron-job.org, …) POSTs here
- * on a schedule with the shared secret — no in-app scheduler needed.
+ * Optional health/trigger endpoint for external schedulers. It uses the same
+ * persisted TIMER cadence as the built-in scheduler and will not send early.
  *
- *   POST /api/v1/mail/cron/digest?sinceDays=1
+ *   POST /api/v1/mail/cron/digest
  *   header: x-cron-secret: <CRON_SECRET>
  */
 export const mailRouter = Router();
@@ -21,15 +19,6 @@ mailRouter.post(
     if (!env.cronSecret) throw new ApiError(404, 'Cron endpoint is disabled (set CRON_SECRET to enable)');
     if (req.header('x-cron-secret') !== env.cronSecret) throw ApiError.unauthorized('Invalid cron secret');
 
-    const sinceDays = Math.min(30, Math.max(1, Number(req.query.sinceDays ?? 1)));
-    const users = await prisma.user.findMany({
-      where: { notifyNewListings: true },
-      select: { email: true },
-    });
-    const result = await sendNewListingsDigest(
-      users.map((u) => u.email),
-      sinceDays,
-    );
-    res.json(result);
+    res.json({ ...await runScheduledNewListingsDigest(), intervalHours: env.timerHours });
   }),
 );

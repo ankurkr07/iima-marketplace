@@ -16,8 +16,8 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-sand/85 backdrop-blur-md">
-      <div className="container-page flex h-16 items-center gap-4">
+    <header className="sticky top-0 z-40 border-b border-line/90 bg-sand/90 backdrop-blur-xl">
+      <div className="container-page flex h-[68px] items-center gap-4">
         <Link href="/marketplace" className="shrink-0" aria-label="IIMA Marketplace home">
           <Logo />
         </Link>
@@ -29,7 +29,7 @@ export function Navbar() {
         <nav className="ml-auto flex items-center gap-1.5">
           <Link
             href="/marketplace"
-            className="hidden rounded-full px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-sand-200 lg:block"
+            className="hidden rounded-full px-3.5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-white hover:text-brick-700 lg:block"
           >
             Browse
           </Link>

@@ -6,6 +6,7 @@ import { InlineLoader } from '@/components/brand/Loader';
 import { PageTransition } from '@/components/shell/PageTransition';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
+import { PageHeading } from '@/components/shell/PageHeading';
 
 /**
  * In-app messaging is on the roadmap (the Conversation/Message models already
@@ -20,12 +21,7 @@ export default function MessagesPage() {
   return (
     <PageTransition>
       <div className="container-page py-10">
-        <div className="mb-8 flex items-center justify-between">
-          <h1 className="font-serif text-3xl tracking-tight text-ink">Messages</h1>
-          <span className="rounded-full bg-gold/15 px-3 py-1 text-xs font-medium text-gold">
-            Realtime chat · Coming soon
-          </span>
-        </div>
+        <PageHeading eyebrow="Your conversations" title="Messages" description="Reach a seller directly from any listing using their available contact options." />
 
         <EmptyState
           icon="💬"

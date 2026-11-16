@@ -4,7 +4,7 @@ import { ApiError } from '../../utils/ApiError';
 import { toPublicProduct } from '../../utils/serializers';
 import type { CreateProductInput, ListProductsQuery, UpdateProductInput } from './products.schema';
 import type { ProductStatus } from '../../config/constants';
-import { notifyNewListing, notifyWishlistStatusChange } from '../mail/mail.service';
+import { notifyWishlistStatusChange } from '../mail/mail.service';
 
 /** Run a notification without blocking (or breaking) the API response. */
 function fireAndForget(work: Promise<unknown>, label: string) {
@@ -130,6 +130,8 @@ export const productsService = {
         rentalRateUnit: input.listingType === 'RENTAL' ? input.rentalRateUnit : null,
         rentalAvailableFrom: input.listingType === 'RENTAL' && input.rentalAvailableFrom ? new Date(input.rentalAvailableFrom) : null,
         rentalAvailableUntil: input.listingType === 'RENTAL' && input.rentalAvailableUntil ? new Date(input.rentalAvailableUntil) : null,
+        rentalSchedule: input.listingType === 'RENTAL' && input.rentalSchedule ? JSON.stringify(input.rentalSchedule) : null,
+        rentalSlotMinutes: input.listingType === 'RENTAL' ? input.rentalSlotMinutes : null,
         marketPrice: input.marketPrice,
         negotiable: input.negotiable,
         condition: input.condition,
@@ -143,9 +145,6 @@ export const productsService = {
       },
       include: withCardRelations,
     });
-
-    // Event mail: tell opted-in members a new item was listed.
-    fireAndForget(notifyNewListing(product.id), 'notifyNewListing');
 
     return toPublicProduct(product);
   },
@@ -172,6 +171,8 @@ export const productsService = {
         rentalRateUnit: input.listingType === 'SALE' ? null : input.rentalRateUnit,
         rentalAvailableFrom: input.listingType === 'SALE' ? null : input.rentalAvailableFrom ? new Date(input.rentalAvailableFrom) : undefined,
         rentalAvailableUntil: input.listingType === 'SALE' ? null : input.rentalAvailableUntil ? new Date(input.rentalAvailableUntil) : undefined,
+        rentalSchedule: input.listingType === 'SALE' ? null : input.rentalSchedule ? JSON.stringify(input.rentalSchedule) : undefined,
+        rentalSlotMinutes: input.listingType === 'SALE' ? null : input.rentalSlotMinutes,
         marketPrice: input.marketPrice,
         negotiable: input.negotiable,
         condition: input.condition,
@@ -209,7 +210,10 @@ export const productsService = {
 
     // Event mail: wishlisters hear when an item is reserved or sold.
     if (status !== existing.status && (status === 'SOLD' || status === 'RESERVED')) {
-      fireAndForget(notifyWishlistStatusChange(id, status), 'notifyWishlist(status)');
+      const notificationKind = status === 'SOLD' && existing.listingType === 'RENTAL'
+        ? 'RENTAL_UNAVAILABLE'
+        : status;
+      fireAndForget(notifyWishlistStatusChange(id, notificationKind), 'notifyWishlist(status)');
     }
 
     return toPublicProduct(product);

@@ -54,7 +54,7 @@ export const Select = forwardRef<
   return (
     <select
       ref={ref}
-      className={cn(baseField, 'appearance-none', error ? 'border-brick-500' : 'border-line', className)}
+      className={cn(baseField, 'appearance-auto pr-10', error ? 'border-brick-500' : 'border-line', className)}
       {...props}
     >
       {children}

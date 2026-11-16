@@ -14,19 +14,10 @@ const columns = [
   {
     title: 'Community',
     links: [
-      { label: 'About', href: '/#about' },
-      { label: 'Safety & trust', href: '/#features' },
+      { label: 'About IIMA Marketplace', href: 'https://students.iima.ac.in/ccc/', external: true },
+      { label: 'Student profiles', href: '/marketplace' },
       { label: 'Contact', href: 'https://linktr.ee/my_launchpad', external: true },
-      { label: 'Report a listing', href: '/#' },
-    ],
-  },
-  {
-    title: 'Coming soon',
-    links: [
-      { label: 'Loyalty points', href: '/#' },
-      { label: 'Campus deals', href: '/#' },
-      { label: 'Rentals', href: '/#' },
-      { label: 'Lost & found', href: '/#' },
+      { label: 'Browse rentals', href: '/marketplace?type=RENTAL' },
     ],
   },
 ];
@@ -34,7 +25,7 @@ const columns = [
 export function Footer() {
   return (
     <footer className="mt-24 border-t border-line bg-sand-50">
-      <div className="container-page grid gap-12 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      <div className="container-page grid gap-10 py-12 sm:grid-cols-3 md:grid-cols-[1.4fr_1fr_1fr] md:py-14">
         <div className="max-w-xs">
           <Logo />
           <p className="mt-4 text-sm leading-relaxed text-ink-muted">

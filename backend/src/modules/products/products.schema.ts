@@ -30,9 +30,15 @@ const productFields = z.object({
   description: z.string().trim().min(10, 'Please add a fuller description').max(4000),
   price: z.coerce.number().int().min(0, 'Price cannot be negative').max(10_000_000),
   listingType: z.enum(['SALE', 'RENTAL']).default('SALE'),
-  rentalRateUnit: z.enum(['HOUR', 'DAY']).optional(),
+  rentalRateUnit: z.enum(['HOUR', 'DAY', 'WEEK', 'BIWEEK', 'MONTH', 'YEAR']).optional(),
   rentalAvailableFrom: z.string().datetime().optional(),
   rentalAvailableUntil: z.string().datetime().optional(),
+  rentalSchedule: z.object({
+    days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+    startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  }).optional(),
+  rentalSlotMinutes: z.coerce.number().int().refine((v) => [30, 60, 120].includes(v)).optional(),
   marketPrice: z.coerce.number().int().min(0).max(10_000_000).optional(),
   negotiable: z.boolean().default(true),
   condition: z.enum(PRODUCT_CONDITIONS).default('GOOD'),
@@ -57,7 +63,12 @@ const validateRental = (value: Partial<z.infer<typeof productFields>>, ctx: z.Re
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['price'], message: 'Rental rate must be greater than zero' });
   }
   if (!value.rentalRateUnit) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalRateUnit'], message: 'Choose an hourly or daily rate' });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalRateUnit'], message: 'Choose a rental rate period' });
+  }
+  if (!value.rentalSchedule || !value.rentalSlotMinutes) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalSchedule'], message: 'Choose at least one day, daily hours, and a booking interval' });
+  } else if (value.rentalSchedule.endTime <= value.rentalSchedule.startTime) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalSchedule', 'endTime'], message: 'Daily end time must be later than start time' });
   }
   if (!value.rentalAvailableFrom || !value.rentalAvailableUntil) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalAvailableFrom'], message: 'Set the start and end of your availability' });
@@ -66,7 +77,7 @@ const validateRental = (value: Partial<z.infer<typeof productFields>>, ctx: z.Re
   if (new Date(value.rentalAvailableUntil) <= new Date(value.rentalAvailableFrom)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalAvailableUntil'], message: 'Availability must end after it starts' });
   }
-  if (new Date(value.rentalAvailableFrom) <= new Date()) {
+  if (value.rentalAvailableFrom.slice(0, 10) < new Date().toISOString().slice(0, 10)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rentalAvailableFrom'], message: 'Availability must start in the future' });
   }
 };

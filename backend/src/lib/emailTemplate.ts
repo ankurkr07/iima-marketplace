@@ -3,7 +3,7 @@ import { env } from '../config/env';
 /**
  * Branded, email-client-safe HTML templates for every mail the platform sends.
  * Uses inline styles + a table layout (the only thing that renders reliably in
- * Gmail/Outlook). One wrapper, reused by bulk announcements, digests, and
+ * Gmail/Outlook). One wrapper, reused by bulk announcements, multi-listing digests, and
  * event notifications — so everything looks consistently "on behalf of Agile
  * CCC / IIMA Marketplace".
  */
@@ -44,7 +44,7 @@ function renderBlock(b: EmailBlock): string {
       <tr>
         ${
           b.imageUrl
-            ? `<td width="96" style="padding:0"><img src="${esc(b.imageUrl)}" width="96" height="96" alt="" style="display:block;width:96px;height:96px;object-fit:cover;border:0"></td>`
+            ? `<td width="96" style="padding:0"><img src="${esc(b.imageUrl)}" width="96" height="96" alt="${esc(b.title)}" style="display:block;width:96px;height:96px;object-fit:cover;border:0"></td>`
             : ''
         }
         <td style="padding:12px 14px;vertical-align:top">
@@ -97,9 +97,22 @@ export function renderEmail(o: RenderEmailOptions): string {
 </body></html>`;
 }
 
-const appBase = () => env.appUrl.replace(/\/$/, '');
+const appBase = () => {
+  const configured = env.appUrl.replace(/\/$/, '');
+  try {
+    const url = new URL(configured);
+    // The IIMA app is mounted under /marketplace behind the campus proxy.
+    url.pathname = url.pathname.replace(/(?:\/marketplace){2,}\/?$/, '/marketplace');
+    if (url.hostname === 'students.iima.ac.in' && !url.pathname.replace(/\/$/, '').endsWith('/marketplace')) {
+      url.pathname = `${url.pathname.replace(/\/$/, '')}/marketplace`;
+    }
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return configured;
+  }
+};
 /** Absolute link to a product on the frontend. */
-export const productUrl = (slug: string) => `${appBase()}/product/${slug}`;
+export const productUrl = (slug: string) => `${appBase()}/product/${encodeURIComponent(slug)}`;
 /** Absolute link to the marketplace browse page. */
 export const browseUrl = () => `${appBase()}/marketplace`;
 /** Absolute link to where a member manages notification preferences (dashboard). */

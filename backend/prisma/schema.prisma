@@ -96,6 +96,18 @@ model MailingGroup {
   updatedAt DateTime @updatedAt
 }
 
+// Persistent cursor and per-recipient Message-IDs for the recurring digest.
+model MailDigestState {
+  id                String   @id @map("_id")
+  lastSentAt        DateTime
+  recipientThreads String   @default("{}") // JSON map: email -> last Message-ID
+  pendingSince      DateTime?
+  pendingUntil      DateTime?
+  pendingRecipients String   @default("[]") // JSON array to resume after partial send failures
+  leaseUntil        DateTime // Distributed lock for multi-process deployments
+  updatedAt         DateTime @updatedAt
+}
+
 // ── Category ──────────────────────────────────────────────────────────────
 model Category {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
@@ -119,6 +131,8 @@ model Product {
   rentalRateUnit String? // HOUR | DAY
   rentalAvailableFrom DateTime?
   rentalAvailableUntil DateTime?
+  rentalSchedule String? // JSON: recurring weekdays and local daily time window
+  rentalSlotMinutes Int? // minimum booking increment: 30, 60, or 120
   marketPrice   Int? // original / market price (MRP), for a strike-through
   negotiable    Boolean  @default(true)
   condition     String   @default("GOOD") // NEW | LIKE_NEW | GOOD | FAIR

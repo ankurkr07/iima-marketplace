@@ -25,6 +25,15 @@ const parseImages = (raw: string): string[] => {
   }
 };
 
+const parseRentalSchedule = (raw: string | null): { days: number[]; startTime: string; endTime: string } | null => {
+  if (!raw) return null;
+  try {
+    const schedule = JSON.parse(raw);
+    if (Array.isArray(schedule.days) && typeof schedule.startTime === 'string' && typeof schedule.endTime === 'string') return schedule;
+  } catch { /* older or malformed listing */ }
+  return null;
+};
+
 type ProductWithRelations = Product & {
   category?: Category | null;
   seller?: User | null;
@@ -35,6 +44,7 @@ export const toPublicProduct = (product: ProductWithRelations) => {
   return {
     ...rest,
     listingType: product.listingType ?? 'SALE',
+    rentalSchedule: parseRentalSchedule(product.rentalSchedule),
     images: parseImages(images),
     category: product.category ?? undefined,
     seller: seller ? toPublicSellerCard(seller) : undefined,

@@ -51,7 +51,7 @@ export default function ProfilePage({ params }: { params: { username: string } }
           <h2 className="mb-5 font-serif text-xl text-ink">Listings by {profile.name.split(' ')[0]}</h2>
           {available.length > 0 ? (
             <div className="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-4">
-              {products.map((p) => (
+              {available.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>

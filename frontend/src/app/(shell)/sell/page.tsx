@@ -18,6 +18,7 @@ import { PageTransition } from '@/components/shell/PageTransition';
 import { Button } from '@/components/ui/Button';
 import { FieldError, FieldLabel, Select, TextArea, TextInput } from '@/components/ui/Field';
 import { ImageUploader } from '@/components/sell/ImageUploader';
+import { PageHeading } from '@/components/shell/PageHeading';
 import type { ProductCondition } from '@/lib/types';
 
 const schema = z.object({
@@ -25,9 +26,11 @@ const schema = z.object({
   description: z.string().trim().min(10, 'Add a few details buyers will want to know').max(4000),
   price: z.coerce.number({ invalid_type_error: 'Enter a price' }).int().min(0).max(10_000_000),
   listingType: z.enum(['SALE', 'RENTAL']),
-  rentalRateUnit: z.enum(['HOUR', 'DAY']).optional(),
+  rentalRateUnit: z.enum(['HOUR', 'DAY', 'WEEK', 'BIWEEK', 'MONTH', 'YEAR']).optional(),
   rentalAvailableFrom: z.string().optional(),
   rentalAvailableUntil: z.string().optional(),
+  rentalSchedule: z.object({ days: z.array(z.number()).optional(), startTime: z.string().optional(), endTime: z.string().optional() }).optional(),
+  rentalSlotMinutes: z.coerce.number().optional(),
   marketPrice: z
     .union([z.coerce.number().int().min(0).max(10_000_000), z.literal('')])
     .optional()
@@ -51,26 +54,28 @@ const schema = z.object({
 }).superRefine((value, ctx) => {
   if (value.listingType !== 'RENTAL') return;
   if (value.price <= 0) ctx.addIssue({ code: 'custom', path: ['price'], message: 'Rental rate must be greater than zero' });
-  if (!value.rentalRateUnit) ctx.addIssue({ code: 'custom', path: ['rentalRateUnit'], message: 'Choose an hourly or daily rate' });
+  if (!value.rentalRateUnit) ctx.addIssue({ code: 'custom', path: ['rentalRateUnit'], message: 'Choose a rental rate period' });
   if (!value.rentalAvailableFrom) ctx.addIssue({ code: 'custom', path: ['rentalAvailableFrom'], message: 'Choose when availability starts' });
   if (!value.rentalAvailableUntil) ctx.addIssue({ code: 'custom', path: ['rentalAvailableUntil'], message: 'Choose when availability ends' });
-  if (value.rentalAvailableFrom && value.rentalAvailableUntil && new Date(value.rentalAvailableUntil) <= new Date(value.rentalAvailableFrom)) {
+  if (!value.rentalSchedule?.days?.length) ctx.addIssue({ code: 'custom', path: ['rentalSchedule'], message: 'Select at least one available day' });
+  if (!value.rentalSchedule?.startTime || !value.rentalSchedule?.endTime || value.rentalSchedule.endTime <= value.rentalSchedule.startTime) ctx.addIssue({ code: 'custom', path: ['rentalSchedule'], message: 'Choose a valid daily time window' });
+  if (![30, 60, 120].includes(Number(value.rentalSlotMinutes))) ctx.addIssue({ code: 'custom', path: ['rentalSlotMinutes'], message: 'Choose a booking interval' });
+  if (value.rentalAvailableFrom && value.rentalAvailableUntil && value.rentalAvailableUntil < value.rentalAvailableFrom) {
     ctx.addIssue({ code: 'custom', path: ['rentalAvailableUntil'], message: 'End must be after the start' });
   }
-  if (value.rentalAvailableFrom && new Date(value.rentalAvailableFrom) <= new Date()) {
+  if (value.rentalAvailableFrom && value.rentalAvailableFrom < todayLocal()) {
     ctx.addIssue({ code: 'custom', path: ['rentalAvailableFrom'], message: 'Availability must start in the future' });
   }
 });
 type FormValues = z.infer<typeof schema>;
 
 const CONDITIONS = Object.keys(CONDITION_LABELS) as ProductCondition[];
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function toLocalDateTime(value: string | null | undefined) {
-  if (!value) return '';
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-}
+const todayLocal = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
 
 function SellInner() {
   const { isAuthenticated, isLoading } = useRequireAuth();
@@ -95,6 +100,7 @@ function SellInner() {
     handleSubmit,
     control,
     watch,
+    setValue,
     reset,
     formState: { errors },
   } = useForm<FormValues>({
@@ -105,6 +111,9 @@ function SellInner() {
       images: [],
       preferredContact: 'EMAIL',
       listingType: 'SALE',
+      rentalRateUnit: 'HOUR',
+      rentalSchedule: { days: [0, 1, 2, 3, 4, 5, 6], startTime: '09:00', endTime: '18:00' },
+      rentalSlotMinutes: 60,
     },
   });
 
@@ -118,8 +127,10 @@ function SellInner() {
       price: p.price,
       listingType: p.listingType ?? 'SALE',
       rentalRateUnit: p.rentalRateUnit ?? undefined,
-      rentalAvailableFrom: toLocalDateTime(p.rentalAvailableFrom),
-      rentalAvailableUntil: toLocalDateTime(p.rentalAvailableUntil),
+      rentalAvailableFrom: p.rentalAvailableFrom?.slice(0, 10) ?? '',
+      rentalAvailableUntil: p.rentalAvailableUntil?.slice(0, 10) ?? '',
+      rentalSchedule: p.rentalSchedule ?? { days: [0, 1, 2, 3, 4, 5, 6], startTime: '09:00', endTime: '18:00' },
+      rentalSlotMinutes: p.rentalSlotMinutes ?? 60,
       marketPrice: p.marketPrice ?? undefined,
       categorySlug: p.category?.slug ?? '',
       condition: p.condition,
@@ -139,9 +150,11 @@ function SellInner() {
         const payload = {
           ...values,
           marketPrice: values.listingType === 'RENTAL' ? undefined : values.marketPrice,
-          rentalAvailableFrom: values.listingType === 'RENTAL' && values.rentalAvailableFrom ? new Date(values.rentalAvailableFrom).toISOString() : undefined,
-          rentalAvailableUntil: values.listingType === 'RENTAL' && values.rentalAvailableUntil ? new Date(values.rentalAvailableUntil).toISOString() : undefined,
+          rentalAvailableFrom: values.listingType === 'RENTAL' && values.rentalAvailableFrom ? new Date(`${values.rentalAvailableFrom}T00:00:00.000Z`).toISOString() : undefined,
+          rentalAvailableUntil: values.listingType === 'RENTAL' && values.rentalAvailableUntil ? new Date(`${values.rentalAvailableUntil}T23:59:59.000Z`).toISOString() : undefined,
           rentalRateUnit: values.listingType === 'RENTAL' ? values.rentalRateUnit : undefined,
+          rentalSchedule: values.listingType === 'RENTAL' ? values.rentalSchedule : undefined,
+          rentalSlotMinutes: values.listingType === 'RENTAL' ? values.rentalSlotMinutes : undefined,
         };
         return isEditing
           ? productsApi.update(existing.data!.product.id, payload)
@@ -199,15 +212,7 @@ function SellInner() {
   return (
     <PageTransition>
       <div className="container-page max-w-3xl py-10">
-        <header className="mb-8">
-          <p className="eyebrow">{isEditing ? 'Edit listing' : 'Buy, sell or rent on campus'}</p>
-          <h1 className="mt-2 font-serif text-3xl tracking-tight text-ink">
-            {isEditing ? 'Update your listing' : 'Create a listing'}
-          </h1>
-          <p className="mt-2 text-sm text-ink-muted">
-            Good photos and an honest description sell faster. Takes about a minute.
-          </p>
-        </header>
+        <PageHeading eyebrow={isEditing ? 'Edit listing' : 'Buy, sell or rent on campus'} title={isEditing ? 'Update your listing' : 'Create a listing'} description="Good photos and a clear description help the right person find your item." />
 
         <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="space-y-8" noValidate>
           <Section title="Photos">
@@ -225,11 +230,12 @@ function SellInner() {
             <div className="space-y-5">
               <div>
                 <FieldLabel htmlFor="listingType">What are you listing?</FieldLabel>
-                <Select id="listingType" {...register('listingType')}>
-                  <option value="SALE">For sale</option>
-                  <option value="RENTAL">For rent</option>
-                </Select>
-                <p className="mt-1.5 text-xs text-ink-faint">Rentals are inquiries only. You confirm availability and the final arrangement directly.</p>
+                <div className="relative grid grid-cols-2 rounded-2xl border border-line bg-sand-100 p-1.5" role="group" aria-label="Listing type">
+                  <motion.span className="absolute bottom-1.5 top-1.5 w-[calc(50%-0.375rem)] rounded-xl bg-white shadow-sm" animate={{ x: isRental ? 'calc(100% + 0.375rem)' : 0 }} transition={{ type: 'spring', stiffness: 360, damping: 32 }} />
+                  {(['SALE', 'RENTAL'] as const).map((type) => <button key={type} type="button" onClick={() => setValue('listingType', type, { shouldValidate: true })} aria-pressed={values.listingType === type} className={`relative z-10 rounded-xl px-4 py-3 text-left transition-colors ${values.listingType === type ? 'text-ink' : 'text-ink-muted hover:text-ink'}`}><span className="block text-sm font-semibold">{type === 'SALE' ? 'Sell an item' : 'Rent out an item'}</span><span className="mt-0.5 block text-xs">{type === 'SALE' ? 'One-time purchase' : 'Set days, hours & rate'}</span></button>)}
+                </div>
+                <input type="hidden" {...register('listingType')} />
+                <p className="mt-2 text-xs text-ink-faint">{isRental ? 'Renters send a request on WhatsApp. You confirm each booking directly.' : 'List a one-time sale and set your asking price.'}</p>
               </div>
               <div>
                 <FieldLabel htmlFor="title">Title</FieldLabel>
@@ -290,11 +296,11 @@ function SellInner() {
                   <FieldError message={errors.price?.message} />
                 </div>
                 <div>
-                  <FieldLabel htmlFor="rentalRateUnit">Charge per</FieldLabel>
+                  <FieldLabel htmlFor="rentalRateUnit">Rate period</FieldLabel>
                   <Select id="rentalRateUnit" error={!!errors.rentalRateUnit} {...register('rentalRateUnit')}>
-                    <option value="">Choose a unit</option>
-                    <option value="HOUR">Hour</option>
-                    <option value="DAY">Day</option>
+                    <option value="">Select a rate period</option>
+                    <option value="HOUR">Hour</option><option value="DAY">Day</option><option value="WEEK">Week</option>
+                    <option value="BIWEEK">Two weeks</option><option value="MONTH">Month</option><option value="YEAR">Year</option>
                   </Select>
                   <FieldError message={errors.rentalRateUnit?.message} />
                 </div>
@@ -336,19 +342,38 @@ function SellInner() {
 
           {isRental && (
             <Section title="Rental availability">
-              <p className="mb-4 text-sm text-ink-muted">Set the continuous period when you can rent this item out. Renters can request a shorter time within this window.</p>
+              <p className="mb-4 text-sm text-ink-muted">Set the date range, recurring days and daily hours when this item can be requested. You confirm requests on WhatsApp.</p>
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
-                  <FieldLabel htmlFor="rentalAvailableFrom">Available from</FieldLabel>
-                  <TextInput id="rentalAvailableFrom" type="datetime-local" min={toLocalDateTime(new Date().toISOString())} error={!!errors.rentalAvailableFrom} {...register('rentalAvailableFrom')} />
+                  <FieldLabel htmlFor="rentalAvailableFrom">First available date</FieldLabel>
+                  <TextInput id="rentalAvailableFrom" type="date" min={todayLocal()} error={!!errors.rentalAvailableFrom} {...register('rentalAvailableFrom')} />
                   <FieldError message={errors.rentalAvailableFrom?.message} />
                 </div>
                 <div>
-                  <FieldLabel htmlFor="rentalAvailableUntil">Available until</FieldLabel>
-                  <TextInput id="rentalAvailableUntil" type="datetime-local" min={values.rentalAvailableFrom || toLocalDateTime(new Date().toISOString())} error={!!errors.rentalAvailableUntil} {...register('rentalAvailableUntil')} />
+                  <FieldLabel htmlFor="rentalAvailableUntil">Last available date</FieldLabel>
+                  <TextInput id="rentalAvailableUntil" type="date" min={values.rentalAvailableFrom || todayLocal()} error={!!errors.rentalAvailableUntil} {...register('rentalAvailableUntil')} />
                   <FieldError message={errors.rentalAvailableUntil?.message} />
                 </div>
               </div>
+              <div className="mt-6">
+                <FieldLabel>Available on</FieldLabel>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {WEEKDAYS.map((day, index) => {
+                    const selected = values.rentalSchedule?.days?.includes(index) ?? false;
+                    return <button key={day} type="button" aria-pressed={selected} onClick={() => {
+                      const days = values.rentalSchedule?.days ?? [];
+                      setValue('rentalSchedule.days', selected ? days.filter((d) => d !== index) : [...days, index], { shouldValidate: true });
+                    }} className={`rounded-full border px-3 py-2 text-sm transition-colors ${selected ? 'border-brick-600 bg-brick-600 text-white' : 'border-line bg-white text-ink-muted hover:border-brick-300'}`}>{day.slice(0, 3)}</button>;
+                  })}
+                </div>
+                <FieldError message={errors.rentalSchedule?.message} />
+              </div>
+              <div className="mt-5 grid gap-5 sm:grid-cols-3">
+                <div><FieldLabel htmlFor="rentalStartTime">Daily start</FieldLabel><TextInput id="rentalStartTime" type="time" {...register('rentalSchedule.startTime')} /></div>
+                <div><FieldLabel htmlFor="rentalEndTime">Daily end</FieldLabel><TextInput id="rentalEndTime" type="time" {...register('rentalSchedule.endTime')} /></div>
+                <div><FieldLabel htmlFor="rentalSlotMinutes">Booking interval</FieldLabel><Select id="rentalSlotMinutes" {...register('rentalSlotMinutes', { valueAsNumber: true })}><option value="30">30 minutes</option><option value="60">1 hour</option><option value="120">2 hours</option></Select></div>
+              </div>
+              <p className="mt-3 text-xs text-ink-faint">Renters request durations in multiples of this interval. Requests are not reserved until you confirm.</p>
             </Section>
           )}
 
@@ -429,7 +454,7 @@ function SellInner() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-card border border-line bg-white p-6">
+    <section className="surface-card p-5 sm:p-7">
       <h2 className="mb-4 font-serif text-lg text-ink">{title}</h2>
       {children}
     </section>

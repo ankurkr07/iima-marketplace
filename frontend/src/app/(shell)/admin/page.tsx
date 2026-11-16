@@ -15,6 +15,7 @@ import { PageTransition } from '@/components/shell/PageTransition';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
+import { PageHeading } from '@/components/shell/PageHeading';
 
 const TABS = ['Overview', 'Listings', 'Members', 'Bulk email'] as const;
 type Tab = (typeof TABS)[number];
@@ -33,15 +34,7 @@ export default function AdminPage() {
   return (
     <PageTransition>
       <div className="container-page py-10">
-        <header className="mb-8 flex items-center justify-between">
-          <div>
-            <p className="eyebrow">Admin</p>
-            <h1 className="mt-2 font-serif text-3xl tracking-tight text-ink">Control panel</h1>
-          </div>
-          <span className="rounded-full bg-brick-50 px-3 py-1 text-xs font-medium text-brick-700">
-            Restricted access
-          </span>
-        </header>
+        <PageHeading eyebrow="Marketplace operations" title="Control panel" description="Review listings, members and marketplace communications." action={<span className="rounded-full bg-brick-50 px-3 py-1 text-xs font-medium text-brick-700">Restricted access</span>} />
 
         <div className="mb-8 flex gap-1 overflow-x-auto border-b border-line">
           {TABS.map((t) => (
@@ -90,7 +83,7 @@ function Overview() {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {cards.map((c) => (
-        <div key={c.label} className="rounded-card border border-line bg-white p-5">
+        <div key={c.label} className="surface-card p-5">
           <p className="font-serif text-2xl font-semibold text-ink">{c.value}</p>
           <p className="mt-1 text-sm text-ink-muted">{c.label}</p>
         </div>
@@ -137,7 +130,7 @@ function Listings() {
               {p.seller?.name} · {p.category?.name} · {formatPrice(p.price)}
             </p>
           </div>
-          <StatusBadge status={p.status} />
+          <StatusBadge status={p.status} label={p.listingType === 'RENTAL' && p.status === 'SOLD' ? 'Unavailable' : undefined} />
           <button
             onClick={() => removeMutation.mutate(p.id)}
             className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-brick-700 transition-colors hover:bg-brick-50"
@@ -330,7 +323,7 @@ function BulkEmail() {
           </div>
         </section>
 
-        <DigestSender groups={groups ?? []} totalUsers={overview?.stats.users} />
+        <DigestSender groups={groups ?? []} totalUsers={overview?.stats.users} timerHours={overview?.mail.timerHours ?? 72} />
       </div>
 
       <GroupsManager />
@@ -342,9 +335,11 @@ function BulkEmail() {
 function DigestSender({
   groups,
   totalUsers,
+  timerHours,
 }: {
   groups: { id: string; label: string; count: number }[];
   totalUsers?: number;
+  timerHours: number;
 }) {
   const { toast } = useToast();
   const [audience, setAudience] = useState('all');
@@ -366,9 +361,7 @@ function DigestSender({
     <section className="rounded-card border border-line bg-white p-6">
       <h2 className="mb-1 font-serif text-lg text-ink">New-listings digest</h2>
       <p className="mb-5 text-sm text-ink-muted">
-        Send a roundup of items listed recently. Trigger it here, or automate it via
-        <code className="mx-1 text-ink-soft">POST /api/v1/mail/cron/digest</code>
-        from any scheduler.
+        Automatic roundup runs every {timerHours} hours for configured recipients and members who opted into new-listing emails. The same email thread is continued each time. You can also send a digest to an audience now, or send a test copy to yourself.
       </p>
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[180px] flex-1">

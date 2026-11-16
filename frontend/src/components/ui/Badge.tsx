@@ -27,9 +27,9 @@ const STATUS_STYLES: Record<ProductStatus, string> = {
   SOLD: 'bg-ink text-white',
 };
 
-export function StatusBadge({ status }: { status: ProductStatus }) {
-  const label = status.charAt(0) + status.slice(1).toLowerCase();
-  return <Badge className={STATUS_STYLES[status]}>{label}</Badge>;
+export function StatusBadge({ status, label }: { status: ProductStatus; label?: string }) {
+  const defaultLabel = status.charAt(0) + status.slice(1).toLowerCase();
+  return <Badge className={STATUS_STYLES[status]}>{label ?? defaultLabel}</Badge>;
 }
 
 export function ConditionBadge({ condition }: { condition: ProductCondition }) {

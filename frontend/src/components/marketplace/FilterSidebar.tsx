@@ -29,9 +29,9 @@ export function FilterSidebar({
   const { data: categories } = useQuery({ queryKey: qk.categories, queryFn: categoriesApi.list });
 
   return (
-    <aside className="space-y-8">
+    <aside className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="font-serif text-lg text-ink">Filters</h2>
+        <div><p className="eyebrow">Refine your search</p><h2 className="mt-1 font-serif text-xl text-ink">Filters</h2></div>
         <button
           onClick={onReset}
           className="text-xs font-medium text-ink-faint transition-colors hover:text-brick-700"
@@ -115,7 +115,7 @@ export function FilterSidebar({
 
 function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div className="border-t border-line pt-5 first:border-0 first:pt-0">
       <h3 className="eyebrow mb-3">{label}</h3>
       {children}
     </div>

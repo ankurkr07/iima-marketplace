@@ -41,9 +41,11 @@ export interface MailMessage {
   subject: string;
   html: string;
   text?: string;
+  inReplyTo?: string;
+  references?: string | string[];
 }
 
-export async function sendMail(msg: MailMessage): Promise<{ sent: boolean }> {
+export async function sendMail(msg: MailMessage): Promise<{ sent: boolean; messageId?: string }> {
   const tx = getTransporter();
   if (!tx) {
     // eslint-disable-next-line no-console
@@ -54,17 +56,19 @@ export async function sendMail(msg: MailMessage): Promise<{ sent: boolean }> {
     return { sent: false };
   }
   try {
-    await tx.sendMail({
+    const info = await tx.sendMail({
       from: env.smtp.from,
       to: Array.isArray(msg.to) ? msg.to.join(',') : msg.to,
       subject: msg.subject,
       text: msg.text,
       html: msg.html,
+      inReplyTo: msg.inReplyTo,
+      references: msg.references,
     });
+    return { sent: true, messageId: info.messageId };
   } catch (e) {
     throw toMailError(e);
   }
-  return { sent: true };
 }
 
 /**

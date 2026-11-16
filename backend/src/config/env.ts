@@ -38,6 +38,11 @@ export const env = {
   // Shared secret for the external-cron digest trigger (POST /api/v1/mail/cron/*).
   // Leave blank to disable the cron endpoint.
   cronSecret: process.env.CRON_SECRET ?? '',
+  // Recurring marketplace listing email cadence, in hours (default: 72 hours).
+  timerHours: (() => {
+    const value = Number(process.env.TIMER ?? 72);
+    return Number.isFinite(value) && value >= 1 && value <= 720 ? value : 72;
+  })(),
 
   // Where uploaded images live: 'mongodb' (default) stores them in the DB as
   // base64 and serves them from /api/v1/images/:id; 'disk' opts into the legacy

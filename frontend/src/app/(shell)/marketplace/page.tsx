@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { productsApi, qk, type ProductFilters } from '@/lib/queries';
+import { categoriesApi, productsApi, qk, type ProductFilters } from '@/lib/queries';
 import { FilterSidebar, type Filters } from '@/components/marketplace/FilterSidebar';
 import { ProductCard, ProductCardSkeleton } from '@/components/product/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -88,6 +88,7 @@ function MarketplaceInner() {
     queryFn: () => productsApi.list(queryFilters),
     placeholderData: keepPreviousData,
   });
+  const { data: categories = [] } = useQuery({ queryKey: qk.categories, queryFn: categoriesApi.list });
 
   // "Load more" should append to the list, not replace it. Accumulate pages
   // during render (not in an effect, which would flash an empty grid for a
@@ -101,27 +102,43 @@ function MarketplaceInner() {
     setItems((prev) => (data.pagination.page === 1 ? data.items : [...prev, ...data.items]));
   }
 
-  const activeCount = Object.values(filters).filter(Boolean).length;
+  const activeCount = Object.values(filters).filter(Boolean).length + (listingType ? 1 : 0);
 
   return (
     <PageTransition>
-      <div className="container-page py-10">
-        <header className="mb-8">
-          <p className="eyebrow">The Marketplace</p>
-          <h1 className="mt-2 font-serif text-3xl tracking-tight text-ink sm:text-4xl">
+      <div className="container-page py-7 sm:py-10">
+        <header className="mb-8 grid overflow-hidden rounded-[26px] border border-line bg-white shadow-card lg:grid-cols-[1fr_300px]">
+          <div className="px-6 py-8 sm:px-9 sm:py-10">
+            <p className="eyebrow">The IIMA campus exchange</p>
+            <h1 className="mt-3 max-w-3xl font-serif text-3xl leading-tight tracking-tight text-ink sm:text-5xl">
             {q ? (
               <>
                 Results for <span className="text-brick-700">“{q}”</span>
               </>
             ) : (
-              'Everything on campus, in one place'
+              <>Good things find <span className="text-brick-700">new homes.</span></>
             )}
           </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-muted sm:text-base">Buy, sell and rent from the IIMA community. Discover useful finds from people who share your campus.</p>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Link href="/sell"><Button>List an item <span aria-hidden>↗</span></Button></Link>
+              <span className="inline-flex items-center gap-2 text-xs font-medium text-ink-muted"><span className="h-2 w-2 rounded-full bg-emerald-600" />Verified IIMA community</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 border-t border-line bg-sand-50 p-6 sm:px-9 lg:grid-cols-1 lg:content-center lg:border-l lg:border-t-0">
+            <div><p className="font-serif text-3xl text-ink">{data?.pagination.total ?? '—'}</p><p className="mt-1 text-xs uppercase tracking-[0.14em] text-ink-faint">Listings to explore</p></div>
+            <div><p className="font-serif text-3xl text-ink">{categories.length || '—'}</p><p className="mt-1 text-xs uppercase tracking-[0.14em] text-ink-faint">Campus categories</p></div>
+          </div>
         </header>
 
-        <div className="grid gap-10 lg:grid-cols-[248px_1fr]">
+        <nav aria-label="Shop by category" className="mb-8 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <button onClick={() => setParams({ category: undefined })} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${!filters.category ? 'border-brick-700 bg-brick-700 text-white' : 'border-line bg-white text-ink-soft hover:border-brick-300'}`}>All categories</button>
+          {categories.map((category) => <button key={category.slug} onClick={() => setParams({ category: filters.category === category.slug ? undefined : category.slug })} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${filters.category === category.slug ? 'border-brick-700 bg-brick-700 text-white' : 'border-line bg-white text-ink-soft hover:border-brick-300'}`}>{category.icon} {category.name}</button>)}
+        </nav>
+
+        <div className="grid items-start gap-7 lg:grid-cols-[250px_minmax(0,1fr)] lg:gap-9">
           <div className="hidden lg:block">
-            <div className="sticky top-24">
+            <div className="surface-card sticky top-24 p-5">
               <FilterSidebar
                 filters={filters}
                 onChange={handleFilterChange}
@@ -131,8 +148,8 @@ function MarketplaceInner() {
           </div>
 
           <section>
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <div className="flex w-fit rounded-full border border-line bg-white p-1">
+            <div className="mb-5 flex flex-col gap-4 rounded-2xl border border-line bg-white p-3.5 shadow-subtle sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex w-fit rounded-full bg-sand-100 p-1">
                 {([
                   { value: undefined, label: 'All listings' },
                   { value: 'SALE', label: 'For sale' },
@@ -141,13 +158,13 @@ function MarketplaceInner() {
                   <button
                     key={option.label}
                     onClick={() => setParams({ type: option.value })}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${listingType === option.value ? 'bg-brick-600 text-white' : 'text-ink-muted hover:text-ink'}`}
+                    className={`rounded-full px-3.5 py-2 text-xs font-semibold transition-colors ${listingType === option.value ? 'bg-brick-700 text-white shadow-subtle' : 'text-ink-muted hover:text-ink'}`}
                   >
                     {option.label}
                   </button>
                 ))}
               </div>
-              <p className="text-sm text-ink-muted">
+              <p className="text-sm text-ink-muted sm:ml-auto">
                 {data ? (
                   <>
                     <span className="font-medium text-ink">{data.pagination.total}</span> listing

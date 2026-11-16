@@ -78,7 +78,7 @@ export interface AdminOverview {
     gmv: number;
     listedThisWeek: number;
   };
-  mail: { configured: boolean; groups: MailingGroup[] };
+  mail: { configured: boolean; groups: MailingGroup[]; timerHours: number };
 }
 
 export interface MailingGroup {

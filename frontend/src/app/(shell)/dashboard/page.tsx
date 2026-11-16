@@ -21,6 +21,7 @@ import { Avatar } from '@/components/shell/Navbar';
 import { WhatsAppInput } from '@/components/profile/WhatsAppInput';
 import { cn } from '@/lib/cn';
 import type { Product, ProductStatus } from '@/lib/types';
+import { PageHeading } from '@/components/shell/PageHeading';
 
 const TABS = ['Overview', 'My listings', 'Wishlist', 'Sold', 'Settings'] as const;
 type Tab = (typeof TABS)[number];
@@ -63,17 +64,7 @@ function DashboardInner() {
   return (
     <PageTransition>
       <div className="container-page py-10">
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="eyebrow">Dashboard</p>
-            <h1 className="mt-2 font-serif text-3xl tracking-tight text-ink">
-              Hello, {user.name.split(' ')[0]}
-            </h1>
-          </div>
-          <Link href="/sell">
-            <Button>Sell an item</Button>
-          </Link>
-        </header>
+        <PageHeading eyebrow="Your campus account" title={`Hello, ${user.name.split(' ')[0]}`} description="Manage your listings, saved finds and marketplace profile." action={<Link href="/sell"><Button>List an item <span aria-hidden>↗</span></Button></Link>} />
 
         {/* Tabs */}
         <div className="mb-8 flex gap-1 overflow-x-auto border-b border-line">
@@ -101,7 +92,7 @@ function DashboardInner() {
           <div className="space-y-10">
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               {stats.map((s) => (
-                <div key={s.label} className="rounded-card border border-line bg-white p-5">
+                <div key={s.label} className="surface-card p-5">
                   <p className="font-serif text-3xl font-semibold text-ink">{s.value}</p>
                   <p className="mt-1 text-sm text-ink-muted">{s.label}</p>
                 </div>
@@ -256,7 +247,7 @@ function ManageListings({ items, loading }: { items: Product[]; loading: boolean
               {formatPrice(p.price)} · {p.views} views · {timeAgo(p.createdAt)}
             </p>
           </div>
-          <StatusBadge status={p.status} />
+          <StatusBadge status={p.status} label={p.listingType === 'RENTAL' && p.status === 'SOLD' ? 'Unavailable' : undefined} />
           <select
             value={p.status}
             onChange={(e) =>
@@ -266,7 +257,7 @@ function ManageListings({ items, loading }: { items: Product[]; loading: boolean
           >
             <option value="AVAILABLE">Available</option>
             <option value="RESERVED">Reserved</option>
-            <option value="SOLD">Sold</option>
+            <option value="SOLD">{p.listingType === 'RENTAL' ? 'Unavailable' : 'Sold'}</option>
           </select>
           <button
             onClick={() => removeMutation.mutate(p.id)}

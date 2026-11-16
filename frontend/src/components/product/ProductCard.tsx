@@ -18,10 +18,11 @@ export function ProductCard({ product, priority }: { product: Product; priority?
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="group"
+      whileHover={{ y: -3 }}
+      className="group overflow-hidden rounded-2xl border border-line bg-white transition-shadow duration-300 hover:shadow-card"
     >
       <Link href={`/product/${product.slug}`} className="block">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-card">
+        <div className="relative aspect-[4/3] overflow-hidden bg-sand-200">
           <div className="transition-transform duration-500 ease-smooth group-hover:scale-[1.03]">
             <ProductImage
               src={product.images[0]}
@@ -47,20 +48,21 @@ export function ProductCard({ product, priority }: { product: Product; priority?
           )}
 
           {product.featured && !sold && !reserved && (
-            <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-brick-700 shadow-subtle">
+            <span className="absolute right-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-brick-700 shadow-subtle">
               ★ Featured
             </span>
           )}
+          {!sold && !reserved && <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-ink-soft shadow-subtle">{product.listingType === 'RENTAL' ? 'For rent' : 'For sale'}</span>}
         </div>
 
-        <div className="mt-3 px-0.5">
+        <div className="p-3.5 sm:p-4">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="line-clamp-1 text-[15px] font-medium leading-snug text-ink transition-colors group-hover:text-brick-700">
+            <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-snug text-ink transition-colors group-hover:text-brick-700 sm:text-[15px]">
               {product.title}
             </h3>
             <div className="shrink-0 text-right">
-              <p className="font-semibold text-ink">
-                {formatPrice(product.price)}{product.listingType === 'RENTAL' ? ` / ${product.rentalRateUnit === 'HOUR' ? 'hour' : 'day'}` : ''}
+              <p className="font-semibold text-brick-700">
+                {formatPrice(product.price)}
               </p>
               {product.marketPrice && product.marketPrice > product.price && (
                 <p className="text-xs text-ink-faint line-through">
@@ -70,19 +72,13 @@ export function ProductCard({ product, priority }: { product: Product; priority?
             </div>
           </div>
 
-          <div className="mt-1.5 flex items-center gap-2 text-xs text-ink-faint">
-            {product.listingType === 'RENTAL' && (
-              <span className="rounded-full bg-brick-50 px-2 py-0.5 font-medium text-brick-700">For rent</span>
-            )}
+          {product.listingType === 'RENTAL' && <p className="mt-1 text-xs font-medium text-ink-muted">per ${{ HOUR: 'hour', DAY: 'day', WEEK: 'week', BIWEEK: '2 weeks', MONTH: 'month', YEAR: 'year' }[product.rentalRateUnit ?? 'DAY']}</p>}
+          <div className="mt-3 flex items-center gap-2 border-t border-line pt-3 text-[11px] text-ink-faint sm:text-xs">
             <ConditionBadge condition={product.condition} />
             {product.location && (
-              <>
-                <span>·</span>
-                <span>{product.location}</span>
-              </>
+              <span className="min-w-0 truncate">{product.location}</span>
             )}
-            <span>·</span>
-            <span>{timeAgo(product.createdAt)}</span>
+            <span className="ml-auto shrink-0">{timeAgo(product.createdAt)}</span>
           </div>
         </div>
       </Link>

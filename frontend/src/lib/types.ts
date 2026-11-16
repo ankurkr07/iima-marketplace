@@ -3,7 +3,12 @@
 export type ProductCondition = 'NEW' | 'LIKE_NEW' | 'GOOD' | 'FAIR';
 export type ProductStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD';
 export type ListingType = 'SALE' | 'RENTAL';
-export type RentalRateUnit = 'HOUR' | 'DAY';
+export type RentalRateUnit = 'HOUR' | 'DAY' | 'WEEK' | 'BIWEEK' | 'MONTH' | 'YEAR';
+export interface RentalSchedule {
+  days: number[]; // Sunday = 0
+  startTime: string; // HH:mm, local campus time
+  endTime: string;
+}
 export type ContactMethod = 'CHAT' | 'PHONE' | 'EMAIL';
 export type UserRole = 'USER' | 'ADMIN';
 export type ProductSort = 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'popular';
@@ -68,6 +73,8 @@ export interface Product {
   rentalRateUnit: RentalRateUnit | null;
   rentalAvailableFrom: string | null;
   rentalAvailableUntil: string | null;
+  rentalSchedule: RentalSchedule | null;
+  rentalSlotMinutes: number | null;
   marketPrice: number | null;
   negotiable: boolean;
   condition: ProductCondition;

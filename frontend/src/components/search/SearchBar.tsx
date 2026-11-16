@@ -34,7 +34,7 @@ export function SearchBar() {
 
   return (
     <div className="relative w-full">
-      <div className="flex items-center gap-2.5 rounded-full border border-line bg-white px-4 py-2.5 transition-colors focus-within:border-ink-faint">
+      <div className="flex items-center gap-2.5 rounded-full border border-line bg-white px-4 py-2.5 shadow-subtle transition-all focus-within:border-brick-300 focus-within:shadow-card">
         <SearchIcon className="h-4 w-4 shrink-0 text-ink-faint" />
         <input
           ref={inputRef}

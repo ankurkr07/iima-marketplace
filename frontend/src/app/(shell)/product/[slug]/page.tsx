@@ -128,9 +128,11 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
       : []),
     ...(product.listingType === 'RENTAL'
       ? [
-          { label: 'Rental rate', value: `${formatPrice(product.price)} / ${product.rentalRateUnit === 'HOUR' ? 'hour' : 'day'}` },
-          { label: 'Available from', value: product.rentalAvailableFrom ? new Date(product.rentalAvailableFrom).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '' },
-          { label: 'Available until', value: product.rentalAvailableUntil ? new Date(product.rentalAvailableUntil).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '' },
+          { label: 'Rental rate', value: `${formatPrice(product.price)} / ${rentalUnitLabel(product.rentalRateUnit)}` },
+          { label: 'Available dates', value: product.rentalAvailableFrom && product.rentalAvailableUntil ? `${formatCalendarDate(product.rentalAvailableFrom)} – ${formatCalendarDate(product.rentalAvailableUntil)}` : '' },
+          { label: 'Available days', value: product.rentalSchedule?.days?.length ? product.rentalSchedule.days.slice().sort((a, b) => a - b).map((day) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]).join(', ') : '' },
+          { label: 'Daily hours', value: product.rentalSchedule ? `${product.rentalSchedule.startTime} – ${product.rentalSchedule.endTime}` : '' },
+          { label: 'Booking interval', value: product.rentalSlotMinutes ? `${product.rentalSlotMinutes} minutes` : '' },
         ]
       : []),
   ].filter((s): s is { label: string; value: string } => !!s.value);
@@ -158,16 +160,16 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
           <span className="truncate text-ink-muted">{product.title}</span>
         </nav>
 
-        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid items-start gap-7 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
           {/* Gallery */}
-          <div>
+          <div className="rounded-[24px] border border-line bg-white p-5 shadow-subtle sm:p-7">
             <ProductGallery images={product.images} title={product.title} />
           </div>
 
           {/* Details */}
           <div>
             <div className="flex items-center gap-2">
-              <StatusBadge status={product.status} />
+              <StatusBadge status={product.status} label={product.listingType === 'RENTAL' && sold ? 'Unavailable' : undefined} />
               {product.listingType !== 'RENTAL' && product.negotiable && !sold && (
                 <span className="text-xs font-medium text-gold">Negotiable</span>
               )}
@@ -179,12 +181,12 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
               </span>
             </div>
 
-            <h1 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-ink">
+            <h1 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-ink sm:text-4xl">
               {product.title}
             </h1>
             <div className="mt-3 flex flex-wrap items-baseline gap-3">
               <p className="text-3xl font-semibold text-brick-700">
-                {formatPrice(product.price)}{product.listingType === 'RENTAL' ? ` / ${product.rentalRateUnit === 'HOUR' ? 'hour' : 'day'}` : ''}
+                {formatPrice(product.price)}{product.listingType === 'RENTAL' ? ` / ${rentalUnitLabel(product.rentalRateUnit)}` : ''}
               </p>
               {product.listingType !== 'RENTAL' && product.marketPrice && product.marketPrice > product.price && (
                 <>
@@ -438,6 +440,10 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
   );
 }
 
+function rentalUnitLabel(unit: Product['rentalRateUnit']) {
+  return ({ HOUR: 'hour', DAY: 'day', WEEK: 'week', BIWEEK: '2 weeks', MONTH: 'month', YEAR: 'year' } as const)[unit ?? 'DAY'];
+}
+
 function RentalRequest({
   product,
   sellerName,
@@ -457,28 +463,51 @@ function RentalRequest({
   onShare: () => void;
   onReport: () => void;
 }) {
-  const [start, setStart] = useState('');
-  const [end, setEnd] = useState('');
+  const [date, setDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState(60);
   const [offer, setOffer] = useState('');
   const availableFrom = product.rentalAvailableFrom ? new Date(product.rentalAvailableFrom) : null;
   const availableUntil = product.rentalAvailableUntil ? new Date(product.rentalAvailableUntil) : null;
-  const minStart = availableFrom ? toLocalDateTimeInput(Math.max(Date.now(), availableFrom.getTime())) : '';
-  const maxEnd = availableUntil ? toLocalDateTimeInput(availableUntil.getTime()) : '';
-  const startDate = start ? new Date(start) : null;
-  const endDate = end ? new Date(end) : null;
-  const valid = Boolean(
-    whatsapp && startDate && endDate && Number(offer) > 0 &&
-      availableFrom && availableUntil &&
-      startDate.getTime() >= Math.max(Date.now(), availableFrom.getTime()) &&
-      endDate.getTime() > startDate.getTime() && endDate.getTime() <= availableUntil.getTime(),
-  );
+  const schedule = product.rentalSchedule ?? { days: [0, 1, 2, 3, 4, 5, 6], startTime: '09:00', endTime: '18:00' };
+  const minDate = availableFrom ? availableFrom.toISOString().slice(0, 10) : '';
+  const maxDate = availableUntil ? availableUntil.toISOString().slice(0, 10) : '';
+  const daySelected = date ? schedule.days.includes(new Date(`${date}T12:00:00`).getDay()) : false;
+  const selectedStart = startTime ? timeToMinutes(startTime) : -1;
+  const availableDuration = selectedStart >= 0 ? timeToMinutes(schedule.endTime) - selectedStart : 0;
+  const increment = product.rentalSlotMinutes ?? 60;
+  const durationOptions = Array.from({ length: Math.floor(availableDuration / increment) }, (_, i) => (i + 1) * increment);
+  const slots = Array.from({ length: Math.ceil((timeToMinutes(schedule.endTime) - timeToMinutes(schedule.startTime)) / (product.rentalSlotMinutes ?? 60)) }, (_, i) => timeToMinutes(schedule.startTime) + i * (product.rentalSlotMinutes ?? 60))
+    .filter((minutes) => minutes < timeToMinutes(schedule.endTime))
+    .map(minutesToTime);
+  const startDate = date && startTime ? new Date(`${date}T${startTime}:00`) : null;
+  const endDate = startDate ? new Date(startDate.getTime() + durationMinutes * 60_000) : null;
+  const currentSlotValid = !!startDate && !!endDate && startDate.getTime() > Date.now() && daySelected && durationMinutes <= availableDuration && durationMinutes % increment === 0;
+  const periodCount = durationMinutes / 60 / ({ HOUR: 1, DAY: 24, WEEK: 168, BIWEEK: 336, MONTH: 720, YEAR: 8760 }[product.rentalRateUnit ?? 'DAY']);
+  const suggestedAmount = Math.max(1, Math.ceil(product.price * periodCount));
+  const valid = Boolean(whatsapp && currentSlotValid && Number(offer) > 0 && availableFrom && availableUntil && startDate!.getTime() >= Math.max(Date.now(), availableFrom.getTime()) && endDate!.getTime() <= availableUntil.getTime());
+
+  const chooseDate = (value: string) => {
+    setDate(value);
+    setStartTime('');
+    setOffer('');
+  };
+
+  const chooseStart = (value: string) => {
+    setStartTime(value);
+    const available = timeToMinutes(schedule.endTime) - timeToMinutes(value);
+    const suggestion = [120, 60, 30].find((minutes) => minutes <= available && minutes % (product.rentalSlotMinutes ?? 60) === 0) ?? product.rentalSlotMinutes ?? 60;
+    setDurationMinutes(suggestion);
+    const count = suggestion / 60 / ({ HOUR: 1, DAY: 24, WEEK: 168, BIWEEK: 336, MONTH: 720, YEAR: 8760 }[product.rentalRateUnit ?? 'DAY']);
+    setOffer(String(Math.max(1, Math.ceil(product.price * count))));
+  };
 
   const sendRequest = () => {
     if (!valid || !whatsapp || !startDate || !endDate) return;
     const dateOptions: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' };
     const message = [
       `Hi ${sellerName.split(' ')[0]}, I'm interested in renting "${product.title}" from IIMA Marketplace.`,
-      `Requested time: ${startDate.toLocaleString('en-IN', dateOptions)} to ${endDate.toLocaleString('en-IN', dateOptions)}.`,
+      `Requested slot: ${startDate.toLocaleString('en-IN', dateOptions)} to ${endDate.toLocaleString('en-IN', dateOptions)} (${durationMinutes} minutes).`,
       `My proposed total amount: ₹${Number(offer).toLocaleString('en-IN')}.`,
       'Please confirm whether this time is still available and the final rental terms.',
     ].join('\n');
@@ -491,22 +520,19 @@ function RentalRequest({
       <div>
         <h2 className="font-serif text-xl text-ink">Request this rental</h2>
         <p className="mt-1 text-sm text-ink-muted">
-          Choose a time inside the owner’s availability and enter your proposed total. The owner confirms through WhatsApp; this request does not reserve the item.
+          Pick an available day and time, then choose a duration. The suggested amount uses the listed rate; you can edit it. The owner confirms through WhatsApp. This request does not reserve the item.
         </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-medium text-ink-soft">
-          Start date & time
-          <input className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm" type="datetime-local" min={minStart} max={maxEnd} value={start} onChange={(event) => setStart(event.target.value)} />
-        </label>
-        <label className="text-sm font-medium text-ink-soft">
-          End date & time
-          <input className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm" type="datetime-local" min={start || minStart} max={maxEnd} value={end} onChange={(event) => setEnd(event.target.value)} />
-        </label>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className="text-sm font-medium text-ink-soft">Available date<input className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm" type="date" min={minDate} max={maxDate} value={date} onChange={(event) => chooseDate(event.target.value)} /></label>
+        <label className="text-sm font-medium text-ink-soft">Start time<select className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm" value={startTime} disabled={!date || !daySelected} onChange={(event) => chooseStart(event.target.value)}><option value="">Select a time</option>{slots.filter((time) => !date || date !== localDateInput(new Date()) || timeToMinutes(time) > new Date().getHours() * 60 + new Date().getMinutes()).map((time) => <option key={time} value={time}>{time}</option>)}</select></label>
+        <label className="text-sm font-medium text-ink-soft">Duration<select className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm" value={durationMinutes} disabled={!startTime} onChange={(event) => setDurationMinutes(Number(event.target.value))}>{durationOptions.map((minutes) => <option key={minutes} value={minutes}>{minutes < 60 ? `${minutes} minutes` : `${minutes / 60} ${minutes === 60 ? 'hour' : 'hours'}`}</option>)}</select></label>
       </div>
+      {date && !daySelected && <p className="text-xs text-brick-700">This listing isn’t available on that weekday. Choose another date.</p>}
       <label className="block text-sm font-medium text-ink-soft">
         Your proposed total (₹)
-        <input className="mt-1.5 w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm" type="number" min="1" step="1" inputMode="numeric" placeholder="Enter your offer" value={offer} onChange={(event) => setOffer(event.target.value)} />
+        <input className="mt-1.5 w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm" type="number" min="1" step="1" inputMode="numeric" placeholder={`Suggested: ₹${suggestedAmount}`} value={offer} onChange={(event) => setOffer(event.target.value)} />
+        {startTime && <span className="mt-1 block text-xs text-ink-faint">Rate: {formatPrice(product.price)} / {rentalUnitLabel(product.rentalRateUnit)} · suggested for this duration: {formatPrice(suggestedAmount)}</span>}
       </label>
       {!whatsapp && <p className="text-xs text-ink-muted">The owner has not made a WhatsApp number visible on this listing.</p>}
       <Button size="lg" fullWidth disabled={!valid} onClick={sendRequest}>
@@ -521,10 +547,10 @@ function RentalRequest({
   );
 }
 
-function toLocalDateTimeInput(timestamp: number) {
-  const local = new Date(timestamp - new Date(timestamp).getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
-}
+function localDateInput(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
+function formatCalendarDate(value: string) { const day = value.slice(0, 10); return new Date(`${day}T12:00:00`).toLocaleDateString('en-IN', { dateStyle: 'medium' }); }
+function timeToMinutes(value: string) { const [hours, minutes] = value.split(':').map(Number); return hours * 60 + minutes; }
+function minutesToTime(value: number) { return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`; }
 
 function Metric({ label, value }: { label: string; value: number }) {
   return (

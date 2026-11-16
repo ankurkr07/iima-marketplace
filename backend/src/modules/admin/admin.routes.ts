@@ -8,6 +8,7 @@ import { ApiError } from '../../utils/ApiError';
 import { isMailConfigured, sendBulk } from '../../lib/mailer';
 import { renderEmail, preferencesUrl } from '../../lib/emailTemplate';
 import { sendNewListingsDigest } from '../mail/mail.service';
+import { env } from '../../config/env';
 
 export const adminRouter = Router();
 
@@ -44,7 +45,7 @@ adminRouter.get(
         gmv: agg._sum.price ?? 0,
         listedThisWeek: recent,
       },
-      mail: { configured: isMailConfigured(), groups: await listGroups() },
+      mail: { configured: isMailConfigured(), groups: await listGroups(), timerHours: env.timerHours },
     });
   }),
 );

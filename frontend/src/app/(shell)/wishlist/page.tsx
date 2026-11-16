@@ -9,6 +9,7 @@ import { PageTransition } from '@/components/shell/PageTransition';
 import { ProductCard } from '@/components/product/ProductCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
+import { PageHeading } from '@/components/shell/PageHeading';
 
 export default function WishlistPage() {
   const { isAuthenticated, isLoading } = useRequireAuth();
@@ -23,10 +24,7 @@ export default function WishlistPage() {
   return (
     <PageTransition>
       <div className="container-page py-10">
-        <header className="mb-8">
-          <p className="eyebrow">Saved for later</p>
-          <h1 className="mt-2 font-serif text-3xl tracking-tight text-ink">Your wishlist</h1>
-        </header>
+        <PageHeading eyebrow="Saved for later" title="Your wishlist" description="Keep the campus finds you like in one place." />
 
         {loading ? (
           <InlineLoader />
