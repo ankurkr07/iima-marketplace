@@ -8,6 +8,23 @@ import { renderEmail, productUrl, browseUrl, type EmailBlock } from '../../lib/e
  */
 
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+const PRODUCTION_MARKETPLACE_BASE = 'https://students.iima.ac.in/marketplace';
+
+/** Repair legacy/internal API image URLs before embedding them in public emails. */
+function emailImageUrl(raw: string): string | undefined {
+  try {
+    const url = new URL(raw, `${PRODUCTION_MARKETPLACE_BASE}/`);
+    const path = url.pathname;
+    const isMarketplaceImage = /^\/(?:marketplace\/)?(?:api\/v1\/images|uploads)\//i.test(path);
+    if (!isMarketplaceImage) return url.protocol === 'https:' ? url.toString() : undefined;
+
+    const normalizedPath = path.startsWith('/marketplace/') ? path : `/marketplace${path}`;
+    const publicOrigin = new URL(PRODUCTION_MARKETPLACE_BASE).origin;
+    return `${publicOrigin}${normalizedPath}${url.search}`;
+  } catch {
+    return undefined;
+  }
+}
 
 function productBlock(p: { title: string; slug: string; price: number; images: string; listingType?: string | null; rentalRateUnit?: string | null }): EmailBlock {
   let image: string | undefined;
@@ -20,7 +37,7 @@ function productBlock(p: { title: string; slug: string; price: number; images: s
   const subtitle = p.listingType === 'RENTAL'
     ? `${rupees(p.price)} / ${periods[p.rentalRateUnit ?? 'DAY'] ?? 'day'} · Rental`
     : `${rupees(p.price)} · For sale`;
-  return { title: p.title, subtitle, imageUrl: image, url: productUrl(p.slug) };
+  return { title: p.title, subtitle, imageUrl: image ? emailImageUrl(image) : undefined, url: productUrl(p.slug) };
 }
 
 const DIGEST_STATE_ID = 'new-listings';

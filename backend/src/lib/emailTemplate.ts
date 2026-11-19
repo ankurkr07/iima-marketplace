@@ -12,6 +12,7 @@ const BRICK = '#8a3b1e';
 const INK = '#2c2622';
 const SAND = '#f7f2ea';
 const LINE = '#eadfce';
+const PRODUCTION_MARKETPLACE_BASE = 'https://students.iima.ac.in/marketplace';
 
 export interface EmailBlock {
   title: string;
@@ -98,6 +99,12 @@ export function renderEmail(o: RenderEmailOptions): string {
 }
 
 const appBase = () => {
+  // Production email links must use the campus-facing mount point. APP_URL can
+  // be configured as the bare host or include one/two /marketplace segments;
+  // pinning the public production URL avoids leaking internal host/port values
+  // into emails and keeps the browse CTA on the exact deployed route.
+  if (env.isProduction) return PRODUCTION_MARKETPLACE_BASE;
+
   const configured = env.appUrl.replace(/\/$/, '');
   try {
     const url = new URL(configured);
