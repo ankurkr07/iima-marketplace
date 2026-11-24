@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { uploadsApi } from '@/lib/queries';
 import { apiErrorMessage } from '@/lib/api';
 import { useToast } from '@/components/feedback/ToastProvider';
+import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 const MAX = 8; // max number of images
@@ -76,17 +77,17 @@ export function ImageUploader({
         }}
         onClick={() => !uploading && inputRef.current?.click()}
         className={cn(
-          'flex cursor-pointer flex-col items-center justify-center rounded-card border-2 border-dashed px-6 py-10 text-center transition-colors',
+          'flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors',
           dragging
             ? 'border-brick-500 bg-brick-50'
             : error
               ? 'border-brick-400 bg-white'
-              : 'border-line bg-sand-50 hover:border-ink-faint',
+              : 'border-line bg-sand-50 hover:border-brick-300 hover:bg-brick-50/30',
           uploading && 'pointer-events-none opacity-80',
         )}
       >
-        <span className="grid h-12 w-12 place-items-center rounded-full bg-white text-xl shadow-subtle">
-          {uploading ? '⏳' : '📷'}
+        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-brick-600 shadow-card">
+          <Icon name={uploading ? 'clock' : 'image'} className="h-6 w-6" />
         </span>
         {uploading ? (
           <>
@@ -102,7 +103,7 @@ export function ImageUploader({
         ) : (
           <>
             <p className="mt-3 text-sm font-medium text-ink-soft">
-              Drag &amp; drop photos, or click to browse
+              <span className="font-semibold text-brick-700">Click to upload</span> or drag &amp; drop photos
             </p>
             <p className="mt-1 text-xs text-ink-faint">
               Up to {MAX} images · 5 MB each · first photo is the cover
@@ -120,7 +121,7 @@ export function ImageUploader({
       </div>
 
       {value.length > 0 && (
-        <div className="mt-4 grid grid-cols-4 gap-3">
+        <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
           <AnimatePresence>
             {value.map((url, i) => (
               <motion.div
@@ -130,22 +131,30 @@ export function ImageUploader({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.2 }}
-                className="group relative aspect-square overflow-hidden rounded-lg border border-line"
+                className="group relative aspect-square overflow-hidden rounded-xl border border-line bg-sand-100"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt={`Upload ${i + 1}`} className="h-full w-full object-cover" />
-                {i === 0 && (
-                  <span className="absolute left-1.5 top-1.5 rounded bg-brick-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                {i === 0 ? (
+                  <span className="absolute left-1.5 top-1.5 rounded-full bg-brick-600 px-2 py-0.5 text-[10px] font-semibold text-white">
                     Cover
                   </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onChange([url, ...value.filter((_, idx) => idx !== i)])}
+                    className="absolute inset-x-1.5 bottom-1.5 rounded-full bg-white/95 py-1 text-[10px] font-semibold text-ink-soft shadow-subtle transition-opacity hover:text-brick-700 sm:opacity-0 sm:group-hover:opacity-100"
+                  >
+                    Make cover
+                  </button>
                 )}
                 <button
                   type="button"
                   onClick={() => onChange(value.filter((_, idx) => idx !== i))}
-                  className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-ink/70 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+                  className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-ink/75 text-white transition-opacity hover:bg-brick-700 sm:opacity-0 sm:group-hover:opacity-100"
                   aria-label="Remove image"
                 >
-                  ✕
+                  <Icon name="close" className="h-3.5 w-3.5" strokeWidth={2.5} />
                 </button>
               </motion.div>
             ))}

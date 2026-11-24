@@ -19,7 +19,7 @@ export function FieldLabel({
 }
 
 const baseField =
-  'w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brick-600/40 transition-colors';
+  'w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint transition-colors hover:border-ink-faint/60 focus:border-brick-400 focus:outline-none focus:ring-4 focus:ring-brick-600/10';
 
 export const TextInput = forwardRef<
   HTMLInputElement,
@@ -28,7 +28,7 @@ export const TextInput = forwardRef<
   return (
     <input
       ref={ref}
-      className={cn(baseField, error ? 'border-brick-500' : 'border-line', className)}
+      className={cn(baseField, error ? 'border-brick-500 bg-brick-50/30' : 'border-line', className)}
       {...props}
     />
   );
@@ -41,7 +41,7 @@ export const TextArea = forwardRef<
   return (
     <textarea
       ref={ref}
-      className={cn(baseField, 'min-h-[120px] resize-y', error ? 'border-brick-500' : 'border-line', className)}
+      className={cn(baseField, 'min-h-[120px] resize-y', error ? 'border-brick-500 bg-brick-50/30' : 'border-line', className)}
       {...props}
     />
   );
@@ -54,7 +54,7 @@ export const Select = forwardRef<
   return (
     <select
       ref={ref}
-      className={cn(baseField, 'appearance-auto pr-10', error ? 'border-brick-500' : 'border-line', className)}
+      className={cn(baseField, 'appearance-auto pr-10', error ? 'border-brick-500 bg-brick-50/30' : 'border-line', className)}
       {...props}
     >
       {children}
@@ -64,5 +64,9 @@ export const Select = forwardRef<
 
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="mt-1.5 text-xs text-brick-600">{message}</p>;
+  return (
+    <p role="alert" className="mt-1.5 flex items-center gap-1 text-xs font-medium text-brick-600">
+      <span aria-hidden>●</span> {message}
+    </p>
+  );
 }

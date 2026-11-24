@@ -18,9 +18,9 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 const ICONS: Record<ToastType, string> = { success: '✓', error: '!', info: 'i' };
 const ACCENT: Record<ToastType, string> = {
-  success: 'bg-brick-600 text-white',
-  error: 'bg-ink text-white',
-  info: 'bg-gold text-white',
+  success: 'bg-emerald-600 text-white',
+  error: 'bg-brick-600 text-white',
+  info: 'bg-ink text-white',
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -37,7 +37,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-6 left-1/2 z-[100] flex -translate-x-1/2 flex-col items-center gap-2">
+      <div className="pointer-events-none fixed bottom-24 left-1/2 z-[100] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex-col items-center gap-2 md:bottom-6">
         <AnimatePresence>
           {toasts.map((t) => (
             <motion.div
@@ -47,7 +47,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.98 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="pointer-events-auto flex items-center gap-3 rounded-full border border-line bg-white/90 py-2 pl-2 pr-5 shadow-lift backdrop-blur"
+              role="status"
+              className="pointer-events-auto flex items-center gap-3 rounded-full border border-line bg-white/95 py-2 pl-2 pr-5 shadow-lift backdrop-blur"
             >
               <span
                 className={`grid h-6 w-6 place-items-center rounded-full text-xs font-semibold ${ACCENT[t.type]}`}

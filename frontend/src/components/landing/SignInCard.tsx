@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
+import campus from '@/../public/campus.jpg';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/providers/AuthProvider';
@@ -41,7 +43,7 @@ export function SignInCard() {
 
   if (isAuthenticated) {
     return (
-      <div className="rounded-[18px] border border-line bg-white/90 p-7 shadow-card backdrop-blur-sm">
+      <div className="rounded-3xl border border-line bg-white/95 p-7 shadow-lift backdrop-blur-sm">
         <h2 className="font-serif text-2xl tracking-tight text-ink">
           Welcome back{user ? `, ${user.name.split(' ')[0]}` : ''}
         </h2>
@@ -54,7 +56,15 @@ export function SignInCard() {
   }
 
   return (
-    <div className="rounded-[18px] border border-line bg-white/90 p-7 shadow-card backdrop-blur-sm">
+    <div className="overflow-hidden rounded-3xl border border-line bg-white shadow-lift">
+      <div className="relative h-28 overflow-hidden bg-brick-900">
+        <Image src={campus} alt="" fill sizes="448px" placeholder="blur" className="object-cover object-[50%_40%] opacity-60" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brick-950/90 to-brick-900/20" />
+        <p className="absolute bottom-3 left-7 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-brick-100">
+          <span className="h-1.5 w-1.5 rounded-full bg-gold-soft" /> IIM Ahmedabad · Students only
+        </p>
+      </div>
+      <div className="p-7">
       <h2 className="font-serif text-2xl tracking-tight text-ink">Sign in</h2>
       <p className="mt-1.5 text-sm text-ink-muted">
         Use your institute Google account to get started.
@@ -124,6 +134,7 @@ export function SignInCard() {
       <p className="mt-6 text-center text-xs text-ink-faint">
         By continuing you agree to keep campus trade respectful and safe. For IIMA students only.
       </p>
+      </div>
     </div>
   );
 }
