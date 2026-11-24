@@ -1,7 +1,7 @@
 import { prisma } from '../../lib/prisma';
 import { env } from '../../config/env';
 import { isMailConfigured, sendBulk, sendMail } from '../../lib/mailer';
-import { renderEmail, productUrl, browseUrl, type EmailBlock } from '../../lib/emailTemplate';
+import { renderEmail, productUrl, browseUrl, rentalsUrl, quipFor, type EmailBlock } from '../../lib/emailTemplate';
 
 /**
  * Automated and admin-triggered marketplace email.
@@ -26,24 +26,65 @@ function emailImageUrl(raw: string): string | undefined {
   }
 }
 
-function productBlock(p: { title: string; slug: string; price: number; images: string; listingType?: string | null; rentalRateUnit?: string | null }): EmailBlock {
+type DigestProduct = {
+  title: string;
+  slug: string;
+  price: number;
+  images: string;
+  listingType?: string | null;
+  rentalRateUnit?: string | null;
+  marketPrice?: number | null;
+  condition?: string | null;
+  location?: string | null;
+  status?: string | null;
+  category?: { name: string } | null;
+};
+
+const PERIODS: Record<string, string> = { HOUR: 'hour', DAY: 'day', WEEK: 'week', BIWEEK: '2 weeks', MONTH: 'month', YEAR: 'year' };
+const CONDITIONS: Record<string, string> = { NEW: 'Brand new', LIKE_NEW: 'Like new', GOOD: 'Good', FAIR: 'Fair' };
+
+function productBlock(p: DigestProduct): EmailBlock {
   let image: string | undefined;
   try {
     image = (JSON.parse(p.images) as string[])[0];
   } catch {
     /* images may be malformed on old rows — skip the thumbnail */
   }
-  const periods: Record<string, string> = { HOUR: 'hour', DAY: 'day', WEEK: 'week', BIWEEK: '2 weeks', MONTH: 'month', YEAR: 'year' };
-  const subtitle = p.listingType === 'RENTAL'
-    ? `${rupees(p.price)} / ${periods[p.rentalRateUnit ?? 'DAY'] ?? 'day'} · Rental`
-    : `${rupees(p.price)} · For sale`;
-  return { title: p.title, subtitle, imageUrl: image ? emailImageUrl(image) : undefined, url: productUrl(p.slug) };
+  const rental = p.listingType === 'RENTAL';
+  const unavailable = p.status === 'SOLD';
+  const reserved = p.status === 'RESERVED';
+  const badge = unavailable
+    ? { badge: rental ? 'Unavailable' : 'Sold', badgeTone: 'muted' as const }
+    : reserved
+      ? { badge: rental ? 'Paused' : 'Reserved', badgeTone: 'muted' as const }
+      : rental
+        ? { badge: 'For rent', badgeTone: 'ink' as const }
+        : { badge: 'For sale', badgeTone: 'brick' as const };
+  const showOld = !rental && !!p.marketPrice && p.marketPrice > p.price;
+  return {
+    title: p.title,
+    price: rupees(p.price),
+    priceNote: rental ? `/ ${PERIODS[p.rentalRateUnit ?? 'DAY'] ?? 'day'}` : undefined,
+    oldPrice: showOld ? rupees(p.marketPrice!) : undefined,
+    ...badge,
+    meta: [p.category?.name, p.condition ? CONDITIONS[p.condition] : undefined, p.location ? `Pick-up: ${p.location}` : undefined]
+      .filter(Boolean)
+      .join(' · ') || undefined,
+    imageUrl: image ? emailImageUrl(image) : undefined,
+    url: productUrl(p.slug),
+  };
 }
 
 const DIGEST_STATE_ID = 'new-listings';
 const DIGEST_SUBJECT = 'IIMA Marketplace · New listings';
 const RETRY_DELAY_MS = 5 * 60_000;
 const DIGEST_LEASE_MS = 30 * 60_000;
+/** After a window closes, wait briefly so listings being saved at that exact
+ * moment are committed before we read them — otherwise a product created a
+ * few milliseconds before the cutoff could land in neither digest. */
+const WINDOW_SETTLE_MS = 15_000;
+/** How many prior Message-IDs to keep per recipient for the References chain. */
+const THREAD_REFERENCE_LIMIT = 20;
 const UNLOCKED_AT = new Date(0);
 
 type DigestRunResult = { due: boolean; items: number; recipients: number; nextRunAt: string | null };
@@ -58,15 +99,61 @@ function parseThreads(raw: string): Record<string, string> {
   catch { return {}; }
 }
 
-function digestHtml(products: Array<{ title: string; slug: string; price: number; images: string; listingType?: string | null; rentalRateUnit?: string | null }>, since: Date, until: Date) {
-  const dateLabel = (date: Date) => date.toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' });
+const istDateTime = (date: Date) =>
+  date.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+
+function digestHtml(products: DigestProduct[], since: Date, until: Date) {
+  const n = products.length;
+  const rentals = products.filter((p) => p.listingType === 'RENTAL').length;
+  const categories = new Set(products.map((p) => p.category?.name).filter(Boolean)).size;
+  const range = `${istDateTime(since)} – ${istDateTime(until)} IST`;
   return renderEmail({
-    title: 'New on the IIMA Marketplace',
-    preheader: `${products.length} new listing${products.length === 1 ? '' : 's'} from ${dateLabel(since)} to ${dateLabel(until)}`,
-    intro: `Here ${products.length === 1 ? 'is' : 'are'} ${products.length} new listing${products.length === 1 ? '' : 's'} added from ${dateLabel(since)} to ${dateLabel(until)}. Each item below links directly to its listing.`,
+    eyebrow: 'New listings digest',
+    title: n === 1 ? 'A new find on campus' : `${n} new finds on campus`,
+    preheader: `${n} new listing${n === 1 ? '' : 's'} on IIMA Marketplace · ${range}`,
+    intro: `Here ${n === 1 ? 'is everything' : `are all ${n} listings`} added to the IIMA Marketplace between ${range}. Tap any item to see photos and contact the seller directly.`,
+    stats: [
+      { value: String(n), label: n === 1 ? 'New listing' : 'New listings' },
+      { value: String(n - rentals), label: 'For sale' },
+      { value: String(rentals), label: 'For rent' },
+      ...(categories > 1 ? [{ value: String(categories), label: 'Categories' }] : []),
+    ],
+    blocksHeading: 'Fresh this round',
     blocks: products.map(productBlock),
-    cta: { label: 'Explore all listings', url: browseUrl() },
+    cta: { label: 'Browse the marketplace', url: browseUrl() },
+    secondaryCta: rentals > 0 ? { label: 'See rentals', url: rentalsUrl() } : undefined,
+    quote: quipFor(until),
   });
+}
+
+/** Render the digest without sending — used by `npm run mail:preview`. */
+export function renderDigestPreview(products: DigestProduct[], since: Date, until: Date) {
+  return { html: digestHtml(products, since, until), text: digestText(products, since, until) };
+}
+
+/** Plain-text twin of the digest — improves deliverability and accessibility. */
+function digestText(products: DigestProduct[], since: Date, until: Date) {
+  const lines = products.map((p) => {
+    const rental = p.listingType === 'RENTAL';
+    const price = `${rupees(p.price)}${rental ? ` / ${PERIODS[p.rentalRateUnit ?? 'DAY'] ?? 'day'}` : ''}`;
+    return `• ${p.title} — ${price} (${rental ? 'for rent' : 'for sale'})\n  ${productUrl(p.slug)}`;
+  });
+  return [
+    `New on IIMA Marketplace: ${products.length} listing${products.length === 1 ? '' : 's'}`,
+    `${istDateTime(since)} – ${istDateTime(until)} IST`,
+    '',
+    ...lines,
+    '',
+    `Browse the marketplace: ${browseUrl()}`,
+    '',
+    `"${quipFor(until)}"`,
+  ].join('\n');
+}
+
+/** Stored per recipient as a space-separated Message-ID chain (oldest first).
+ * Older rows hold a single id, which parses the same way. */
+function threadChain(raw: string | undefined): string[] {
+  return (raw ?? '').split(/\s+/).filter(Boolean);
 }
 
 let scheduledDigestRun: Promise<DigestRunResult> | null = null;
@@ -118,6 +205,7 @@ async function runScheduledDigestOnce(): Promise<DigestRunResult> {
         where: { id: DIGEST_STATE_ID },
         data: { pendingSince: state.lastSentAt, pendingUntil: claimedAt, pendingRecipients: '[]' },
       });
+      await new Promise((resolve) => setTimeout(resolve, WINDOW_SETTLE_MS));
     }
 
     const since = state.pendingSince!;
@@ -135,9 +223,12 @@ async function runScheduledDigestOnce(): Promise<DigestRunResult> {
       return { due: true, items: 0, recipients: 0, nextRunAt: new Date(Date.now() + RETRY_DELAY_MS).toISOString() };
     }
 
+    // Window is (since, until]: everything added after the previous digest up to
+    // the moment this one was due — including listings added minutes before.
     const products = await prisma.product.findMany({
       where: { createdAt: { gt: since, lte: until } },
       orderBy: { createdAt: 'desc' },
+      include: { category: { select: { name: true } } },
     });
     if (products.length === 0) {
       await prisma.mailDigestState.update({
@@ -150,18 +241,22 @@ async function runScheduledDigestOnce(): Promise<DigestRunResult> {
     const sentRecipients = new Set(parseJsonArray(state.pendingRecipients));
     const threads = parseThreads(state.recipientThreads);
     const html = digestHtml(products, since, until);
+    const text = digestText(products, since, until);
     for (const email of recipients) {
       if (sentRecipients.has(email)) continue;
-      const previousMessageId = threads[email];
+      // Same subject + In-Reply-To + the full References chain keeps every
+      // digest in one conversation in Gmail, Outlook and Apple Mail.
+      const chain = threadChain(threads[email]);
       const result = await sendMail({
         to: email,
         subject: DIGEST_SUBJECT,
         html,
-        inReplyTo: previousMessageId,
-        references: previousMessageId,
+        text,
+        inReplyTo: chain[chain.length - 1],
+        references: chain.length ? chain : undefined,
       });
       if (!result.sent || !result.messageId) throw new Error(`Could not persist the email thread for ${email}`);
-      threads[email] = result.messageId;
+      threads[email] = [...chain, result.messageId].slice(-THREAD_REFERENCE_LIMIT).join(' ');
       sentRecipients.add(email);
       state = await prisma.mailDigestState.update({
         where: { id: DIGEST_STATE_ID },
@@ -216,7 +311,7 @@ export async function notifyWishlistStatusChange(
   productId: string,
   kind: 'SOLD' | 'RESERVED' | 'PRICE_DROP' | 'RENTAL_UNAVAILABLE',
 ): Promise<void> {
-  const product = await prisma.product.findUnique({ where: { id: productId } });
+  const product = await prisma.product.findUnique({ where: { id: productId }, include: { category: { select: { name: true } } } });
   if (!product) return;
 
   const savers = await prisma.wishlistItem.findMany({
@@ -237,13 +332,16 @@ export async function notifyWishlistStatusChange(
   }[kind];
 
   const html = renderEmail({
+    eyebrow: 'Wishlist update',
     title: copy.title,
     preheader: `${product.title} ${copy.verb}`,
     intro: kind === 'PRICE_DROP'
       ? `An item on your wishlist, "${product.title}", ${copy.verb}. It's now ${rupees(product.price)}.`
       : `An item on your wishlist, "${product.title}", ${copy.verb}.`,
     blocks: [productBlock(product)],
-    cta: { label: 'View item', url: productUrl(product.slug) },  });
+    cta: { label: 'View item', url: productUrl(product.slug) },
+    secondaryCta: { label: 'Browse similar', url: browseUrl() },
+  });
   await sendBulk(emails, `Wishlist update: ${product.title}`, html);
 }
 
@@ -261,6 +359,7 @@ export async function sendNewListingsDigest(
   const products = await prisma.product.findMany({
     where: { createdAt: { gte: since, lte: until } },
     orderBy: { createdAt: 'desc' },
+    include: { category: { select: { name: true } } },
   });
   if (products.length === 0 || recipients.length === 0) {
     return { items: products.length, recipients: 0 };

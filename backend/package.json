@@ -18,6 +18,7 @@
     "db:reset": "prisma db push --force-reset && prisma db seed",
     "setup": "prisma generate && prisma db push && prisma db seed",
     "mail:test": "ts-node --transpile-only scripts/send-test-mail.ts",
+    "mail:preview": "ts-node --transpile-only scripts/preview-digest.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

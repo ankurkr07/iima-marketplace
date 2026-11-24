@@ -50,3 +50,6 @@ coverage/
 # Stray process redirect logs
 *.err
 *.out
+
+# Local email template preview (npm run mail:preview)
+backend/digest-preview.html
