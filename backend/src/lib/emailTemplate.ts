@@ -2,36 +2,69 @@ import { env } from '../config/env';
 
 /**
  * Branded, email-client-safe HTML templates for every mail the platform sends.
- * Uses inline styles + a table layout (the only thing that renders reliably in
- * Gmail/Outlook). One wrapper, reused by bulk announcements, multi-listing digests, and
- * event notifications — so everything looks consistently "on behalf of Agile
- * CCC / IIMA Marketplace".
+ * Table layout + inline styles only (the one thing Gmail, Outlook and Apple Mail
+ * all render reliably). One wrapper is reused by digests, wishlist alerts and
+ * admin announcements so everything reads as one IIMA Marketplace voice.
  */
 
-const BRICK = '#8a3b1e';
-const INK = '#2c2622';
-const SAND = '#f7f2ea';
-const LINE = '#eadfce';
+const C = {
+  brick: '#9A3324',
+  brickDark: '#66241C',
+  brickDeep: '#4E1E18',
+  brickTint: '#FBF3F1',
+  ink: '#1A1614',
+  soft: '#3D3733',
+  muted: '#6B6259',
+  faint: '#9A9088',
+  sand: '#FAF7F2',
+  sand2: '#F2ECE3',
+  line: '#E9E1D6',
+  gold: '#C9A876',
+  green: '#1F7A4D',
+  greenTint: '#E9F6EF',
+};
+const SERIF = "Georgia,'Times New Roman',serif";
+const SANS = "'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const PRODUCTION_MARKETPLACE_BASE = 'https://students.iima.ac.in/marketplace';
 
 export interface EmailBlock {
   title: string;
+  /** Legacy single-line detail (used when `price` is not given). */
   subtitle?: string;
   imageUrl?: string;
   url?: string;
+  /** Formatted price, e.g. "₹2,500". */
+  price?: string;
+  /** Small text after the price, e.g. "/ day". */
+  priceNote?: string;
+  /** Struck-through original price, e.g. "₹7,000". */
+  oldPrice?: string;
+  /** Pill shown above the title, e.g. "For rent". */
+  badge?: string;
+  badgeTone?: 'brick' | 'ink' | 'green' | 'muted';
+  /** Secondary line, e.g. "Cycles · Good · D-15". */
+  meta?: string;
 }
 
 export interface RenderEmailOptions {
   title: string;
   /** Hidden preview text shown in the inbox list. */
   preheader?: string;
+  /** Small label above the title, e.g. "New listings digest". */
+  eyebrow?: string;
   /** Intro paragraph(s) — plain text; line breaks become <br>. */
   intro?: string;
+  /** Optional headline figures shown under the intro. */
+  stats?: { value: string; label: string }[];
+  /** Optional heading above the cards. */
+  blocksHeading?: string;
   /** Optional list of product/announcement cards. */
   blocks?: EmailBlock[];
-  /** Optional primary call-to-action button. */
+  /** Primary call-to-action button. */
   cta?: { label: string; url: string };
-  /** Optional "manage preferences / unsubscribe" URL for the footer. */
+  /** Secondary text link shown beside/below the primary button. */
+  secondaryCta?: { label: string; url: string };
+  /** "Manage email preferences" link in the footer. */
   manageUrl?: string;
 }
 
@@ -39,58 +72,152 @@ const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const nl2br = (s: string) => esc(s).replace(/\n/g, '<br>');
 
+const BADGE_TONES: Record<NonNullable<EmailBlock['badgeTone']>, string> = {
+  brick: `background:${C.brickTint};color:${C.brick};`,
+  ink: `background:${C.ink};color:#ffffff;`,
+  green: `background:${C.greenTint};color:${C.green};`,
+  muted: `background:${C.sand2};color:${C.muted};`,
+};
+
+function button(label: string, url: string, variant: 'solid' | 'light' = 'solid') {
+  const solid = variant === 'solid';
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate">
+    <tr><td align="center" bgcolor="${solid ? C.brick : '#ffffff'}" style="border-radius:999px;${solid ? '' : `border:1px solid ${C.line};`}">
+      <a href="${esc(url)}" target="_blank" style="display:inline-block;padding:13px 26px;font:600 14px/1 ${SANS};color:${solid ? '#ffffff' : C.brick};text-decoration:none;border-radius:999px;white-space:nowrap">${esc(label)}&nbsp;&rarr;</a>
+    </td></tr>
+  </table>`;
+}
+
 function renderBlock(b: EmailBlock): string {
-  const inner = `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${LINE};border-radius:12px;overflow:hidden;margin:0 0 12px">
-      <tr>
-        ${
-          b.imageUrl
-            ? `<td width="96" style="padding:0"><img src="${esc(b.imageUrl)}" width="96" height="96" alt="${esc(b.title)}" style="display:block;width:96px;height:96px;object-fit:cover;border:0"></td>`
-            : ''
-        }
-        <td style="padding:12px 14px;vertical-align:top">
-          <div style="font:600 15px/1.3 Georgia,serif;color:${INK}">${esc(b.title)}</div>
-          ${b.subtitle ? `<div style="font:400 13px/1.4 Arial,sans-serif;color:#7a6f63;margin-top:4px">${esc(b.subtitle)}</div>` : ''}
-        </td>
-      </tr>
-    </table>`;
-  return b.url
-    ? `<a href="${esc(b.url)}" style="text-decoration:none;color:inherit;display:block">${inner}</a>`
-    : inner;
+  const href = b.url ? esc(b.url) : '';
+  const wrap = (content: string) => (b.url ? `<a href="${href}" target="_blank" style="text-decoration:none;color:inherit">${content}</a>` : content);
+  const image = b.imageUrl
+    ? wrap(`<img src="${esc(b.imageUrl)}" width="112" height="112" alt="${esc(b.title)}" style="display:block;width:112px;height:112px;object-fit:cover;border:0;border-radius:12px;background:${C.sand2}">`)
+    : `<div style="width:112px;height:112px;border-radius:12px;background:${C.sand2};text-align:center;line-height:112px;font:400 28px/112px ${SERIF};color:${C.faint}">&#9633;</div>`;
+
+  const badge = b.badge
+    ? `<span style="display:inline-block;padding:3px 9px;border-radius:999px;font:700 10px/1.4 ${SANS};letter-spacing:.06em;text-transform:uppercase;${BADGE_TONES[b.badgeTone ?? 'brick']}">${esc(b.badge)}</span>`
+    : '';
+  const price = b.price
+    ? `<div style="margin-top:6px;font:700 18px/1.2 ${SANS};color:${C.ink}">${esc(b.price)}${
+        b.priceNote ? `<span style="font:500 12px ${SANS};color:${C.muted}"> ${esc(b.priceNote)}</span>` : ''
+      }${b.oldPrice ? `<span style="font:400 12px ${SANS};color:${C.faint};text-decoration:line-through"> &nbsp;${esc(b.oldPrice)}</span>` : ''}</div>`
+    : b.subtitle
+      ? `<div style="margin-top:6px;font:400 13px/1.45 ${SANS};color:${C.muted}">${esc(b.subtitle)}</div>`
+      : '';
+  const meta = b.meta ? `<div style="margin-top:4px;font:400 12px/1.4 ${SANS};color:${C.faint}">${esc(b.meta)}</div>` : '';
+  const link = b.url
+    ? `<div style="margin-top:10px"><a href="${href}" target="_blank" style="font:600 13px ${SANS};color:${C.brick};text-decoration:none">View listing &rarr;</a></div>`
+    : '';
+
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;border:1px solid ${C.line};border-radius:16px;background:#ffffff;border-collapse:separate">
+    <tr>
+      <td class="thumb" width="112" valign="top" style="padding:12px 0 12px 12px">${image}</td>
+      <td valign="top" style="padding:12px 16px 12px 16px">
+        ${badge}
+        <div style="margin-top:${badge ? '6px' : '0'};font:600 16px/1.3 ${SERIF};color:${C.ink}">${wrap(esc(b.title))}</div>
+        ${price}
+        ${meta}
+        ${link}
+      </td>
+    </tr>
+  </table>`;
 }
 
 export function renderEmail(o: RenderEmailOptions): string {
   const blocks = (o.blocks ?? []).map(renderBlock).join('');
-  const cta = o.cta
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0">
-         <tr><td style="border-radius:10px;background:${BRICK}">
-           <a href="${esc(o.cta.url)}" style="display:inline-block;padding:12px 22px;font:600 14px Arial,sans-serif;color:#fff;text-decoration:none;border-radius:10px">${esc(o.cta.label)}</a>
-         </td></tr>
-       </table>`
+  const stats = o.stats?.length
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 24px;border:1px solid ${C.line};border-radius:14px;background:${C.sand};border-collapse:separate">
+        <tr>${o.stats
+          .map(
+            (s, i) => `<td align="center" style="padding:14px 8px;${i > 0 ? `border-left:1px solid ${C.line};` : ''}">
+              <div style="font:700 22px/1.1 ${SERIF};color:${C.brick}">${esc(s.value)}</div>
+              <div style="margin-top:4px;font:600 10px/1.3 ${SANS};letter-spacing:.12em;text-transform:uppercase;color:${C.faint}">${esc(s.label)}</div>
+            </td>`,
+          )
+          .join('')}</tr>
+      </table>`
     : '';
+  const ctas = o.cta
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 4px"><tr>
+        <td class="btn-cell" style="padding:0 10px 8px 0">${button(o.cta.label, o.cta.url)}</td>
+        ${o.secondaryCta ? `<td class="btn-cell" style="padding:0 0 8px 0">${button(o.secondaryCta.label, o.secondaryCta.url, 'light')}</td>` : ''}
+      </tr></table>`
+    : '';
+  const marketplace = browseUrl();
 
   return `<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>${esc(o.title)}</title></head>
-<body style="margin:0;padding:0;background:${SAND}">
-  ${o.preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(o.preheader)}</div>` : ''}
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SAND};padding:24px 12px">
-    <tr><td align="center">
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border:1px solid ${LINE};border-radius:16px;overflow:hidden">
-        <tr><td style="padding:22px 28px;border-bottom:1px solid ${LINE}">
-          <span style="font:700 18px Georgia,serif;color:${BRICK}">IIMA Marketplace</span>
-          <span style="font:400 12px Arial,sans-serif;color:#9a8f82;letter-spacing:.08em"> &nbsp;· CAMPUS BUY · SELL · RENT</span>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light">
+<title>${esc(o.title)}</title>
+<style>
+  @media only screen and (max-width:480px){
+    .px{padding-left:20px!important;padding-right:20px!important}
+    .tagline{display:none!important}
+    .thumb,.thumb img,.thumb div{width:84px!important;height:84px!important;line-height:84px!important}
+    .h1{font-size:24px!important}
+    .btn-cell{display:block!important;padding:0 0 10px 0!important}
+  }
+</style></head>
+<body style="margin:0;padding:0;background:${C.sand2};-webkit-text-size-adjust:100%">
+  ${o.preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">${esc(o.preheader)}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>` : ''}
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.sand2}">
+    <tr><td align="center" style="padding:28px 12px">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%">
+
+        <!-- Brand bar -->
+        <tr><td style="padding:0 4px 14px">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td valign="middle">
+              <a href="${esc(marketplace)}" target="_blank" style="text-decoration:none">
+                <span style="display:inline-block;width:30px;height:30px;border-radius:8px;background:${C.brick};color:#ffffff;text-align:center;font:700 16px/30px ${SERIF};vertical-align:middle">&#8745;</span>
+                <span style="font:700 17px ${SERIF};color:${C.ink};vertical-align:middle;white-space:nowrap">&nbsp;IIMA Marketplace</span>
+              </a>
+            </td>
+            <td class="tagline" align="right" valign="middle" style="font:600 10px ${SANS};letter-spacing:.14em;text-transform:uppercase;color:${C.faint}">Campus Buy · Sell · Rent</td>
+          </tr></table>
         </td></tr>
-        <tr><td style="padding:26px 28px">
-          <h1 style="margin:0 0 12px;font:600 22px/1.25 Georgia,serif;color:${INK}">${esc(o.title)}</h1>
-          ${o.intro ? `<p style="margin:0 0 16px;font:400 15px/1.55 Arial,sans-serif;color:#4a423b">${nl2br(o.intro)}</p>` : ''}
-          ${blocks}
-          ${cta}
+
+        <!-- Card -->
+        <tr><td style="background:#ffffff;border:1px solid ${C.line};border-radius:20px;overflow:hidden">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <!-- Hero -->
+            <tr><td bgcolor="${C.brickDeep}" style="background:${C.brickDeep};background-image:linear-gradient(135deg,${C.brickDeep} 0%,${C.brick} 100%);border-radius:20px 20px 0 0;padding:34px 32px 30px" class="px">
+              ${o.eyebrow ? `<div style="font:700 11px ${SANS};letter-spacing:.18em;text-transform:uppercase;color:${C.gold}">${esc(o.eyebrow)}</div>` : ''}
+              <h1 class="h1" style="margin:${o.eyebrow ? '10px' : '0'} 0 0;font:600 28px/1.2 ${SERIF};color:#ffffff">${esc(o.title)}</h1>
+              <div style="margin-top:18px">
+                <a href="${esc(marketplace)}" target="_blank" style="display:inline-block;padding:10px 18px;border-radius:999px;background:#ffffff;font:600 13px/1 ${SANS};color:${C.brick};text-decoration:none">Open IIMA Marketplace &rarr;</a>
+              </div>
+            </td></tr>
+
+            <!-- Body -->
+            <tr><td class="px" style="padding:28px 32px 8px">
+              ${o.intro ? `<p style="margin:0 0 20px;font:400 15px/1.6 ${SANS};color:${C.soft}">${nl2br(o.intro)}</p>` : ''}
+              ${stats}
+              ${o.blocksHeading && blocks ? `<div style="margin:0 0 12px;font:700 11px ${SANS};letter-spacing:.14em;text-transform:uppercase;color:${C.faint}">${esc(o.blocksHeading)}</div>` : ''}
+              ${blocks}
+              ${ctas}
+            </td></tr>
+
+            <!-- Trust strip -->
+            <tr><td class="px" style="padding:16px 32px 28px">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:14px;background:${C.sand};border-collapse:separate">
+                <tr><td style="padding:14px 18px;font:400 12px/1.6 ${SANS};color:${C.muted}">
+                  <strong style="color:${C.soft}">Trade safely on campus.</strong> Meet in a common area, check the item before you pay, and never pay in advance to someone you haven't met.
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
         </td></tr>
-        <tr><td style="padding:18px 28px;border-top:1px solid ${LINE};background:${SAND}">
-          <p style="margin:0;font:400 12px/1.6 Arial,sans-serif;color:#9a8f82">
-            Sent by IIMA Marketplace · Built by Agile CCC.
-          </p>
+
+        <!-- Footer -->
+        <tr><td align="center" style="padding:22px 16px 8px;font:400 12px/1.7 ${SANS};color:${C.faint}">
+          <a href="${esc(marketplace)}" target="_blank" style="color:${C.brick};font-weight:600;text-decoration:none">Browse listings</a>
+          &nbsp;·&nbsp;
+          <a href="${esc(sellUrl())}" target="_blank" style="color:${C.brick};font-weight:600;text-decoration:none">Sell or rent an item</a>
+          ${o.manageUrl ? `&nbsp;·&nbsp;<a href="${esc(o.manageUrl)}" target="_blank" style="color:${C.muted};text-decoration:underline">Email preferences</a>` : ''}
+          <br>
+          The official student marketplace of IIM Ahmedabad · Built by Agile CCC
         </td></tr>
       </table>
     </td></tr>
@@ -122,5 +249,9 @@ const appBase = () => {
 export const productUrl = (slug: string) => `${appBase()}/product/${encodeURIComponent(slug)}`;
 /** Absolute link to the marketplace browse page. */
 export const browseUrl = () => `${appBase()}/marketplace`;
+/** Absolute link to the rentals view. */
+export const rentalsUrl = () => `${appBase()}/marketplace?type=RENTAL`;
+/** Absolute link to the create-listing page. */
+export const sellUrl = () => `${appBase()}/sell`;
 /** Absolute link to where a member manages notification preferences (dashboard). */
-export const preferencesUrl = () => `${appBase()}/dashboard`;
+export const preferencesUrl = () => `${appBase()}/dashboard?tab=Settings`;

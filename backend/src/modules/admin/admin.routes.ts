@@ -178,6 +178,7 @@ adminRouter.post(
     if (recipients.length === 0) throw ApiError.badRequest('No recipients for that audience');
 
     const html = renderEmail({
+      eyebrow: 'Announcement',
       title: subject,
       intro: body,
       cta,
