@@ -24,6 +24,7 @@ const config: Config = {
           700: '#7E2A1F',
           800: '#66241C',
           900: '#4E1E18',
+          950: '#2E110D',
         },
         sand: {
           DEFAULT: '#FAF7F2',
@@ -58,6 +59,8 @@ const config: Config = {
         card: '0 1px 2px rgba(26,22,20,0.04), 0 8px 24px -12px rgba(26,22,20,0.10)',
         lift: '0 2px 4px rgba(26,22,20,0.05), 0 20px 40px -16px rgba(26,22,20,0.18)',
         subtle: '0 1px 0 rgba(26,22,20,0.04)',
+        float: '0 1px 2px rgba(26,22,20,0.06), 0 12px 32px -8px rgba(26,22,20,0.16)',
+        nav: '0 -1px 0 rgba(26,22,20,0.06), 0 -8px 24px -12px rgba(26,22,20,0.12)',
       },
       transitionTimingFunction: {
         smooth: 'cubic-bezier(0.22, 1, 0.36, 1)',
@@ -66,9 +69,20 @@ const config: Config = {
         shimmer: {
           '100%': { transform: 'translateX(100%)' },
         },
+        'fade-up': {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        pop: {
+          '0%': { transform: 'scale(1)' },
+          '40%': { transform: 'scale(1.25)' },
+          '100%': { transform: 'scale(1)' },
+        },
       },
       animation: {
         shimmer: 'shimmer 1.6s infinite',
+        'fade-up': 'fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both',
+        pop: 'pop 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
       },
     },
   },

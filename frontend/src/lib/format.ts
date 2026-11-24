@@ -55,3 +55,17 @@ export function whatsappLink(number: string, message?: string): string {
   const base = `https://wa.me/${digits}`;
   return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }
+
+const RENTAL_UNIT_LABELS = {
+  HOUR: 'hour',
+  DAY: 'day',
+  WEEK: 'week',
+  BIWEEK: '2 weeks',
+  MONTH: 'month',
+  YEAR: 'year',
+} as const;
+
+/** "hour", "day", "2 weeks"… — the period a rental rate is quoted for. */
+export function rentalUnitLabel(unit: keyof typeof RENTAL_UNIT_LABELS | null | undefined): string {
+  return RENTAL_UNIT_LABELS[unit ?? 'DAY'];
+}
