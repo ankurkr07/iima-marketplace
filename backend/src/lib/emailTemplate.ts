@@ -64,8 +64,32 @@ export interface RenderEmailOptions {
   cta?: { label: string; url: string };
   /** Secondary text link shown beside/below the primary button. */
   secondaryCta?: { label: string; url: string };
-  /** "Manage email preferences" link in the footer. */
-  manageUrl?: string;
+  /** Sign-off line in the closing card. Defaults to a rotating campus quip. */
+  quote?: string;
+}
+
+/**
+ * Light-hearted sign-offs for the closing card. One is picked per day, so
+ * consecutive mails in a thread differ (Gmail collapses repeated content).
+ */
+export const CAMPUS_QUIPS = [
+  "One student's 'I'll never use this again' is another's 'exactly what I needed.'",
+  'Sell what you\'ve outgrown, keep the memories — and the batchmates.',
+  'Your old cycle has a few more laps of Vastrapur Lake left in it.',
+  'Supply meets demand, no case study required.',
+  'The best deal on campus is still the one that stays on campus.',
+  'Declutter the dorm, not the friendships.',
+  'Good things deserve a second semester.',
+  'Pre-owned, pre-loved, pre-placement approved.',
+  'Less stuff under the bed, more room for ideas.',
+  'Somewhere on campus, someone is looking for exactly what you are about to sell.',
+  'Think of it as a very small, very friendly marketplace case.',
+  'From one Kahn arch to another — pass it on.',
+];
+
+export function quipFor(date = new Date()): string {
+  const day = Math.floor(date.getTime() / 86_400_000);
+  return CAMPUS_QUIPS[day % CAMPUS_QUIPS.length]!;
 }
 
 const esc = (s: string) =>
@@ -199,11 +223,12 @@ export function renderEmail(o: RenderEmailOptions): string {
               ${ctas}
             </td></tr>
 
-            <!-- Trust strip -->
+            <!-- Sign-off quip -->
             <tr><td class="px" style="padding:16px 32px 28px">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:14px;background:${C.sand};border-collapse:separate">
-                <tr><td style="padding:14px 18px;font:400 12px/1.6 ${SANS};color:${C.muted}">
-                  <strong style="color:${C.soft}">Trade safely on campus.</strong> Meet in a common area, check the item before you pay, and never pay in advance to someone you haven't met.
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:14px;background:${C.sand};border-left:4px solid ${C.gold};border-collapse:separate">
+                <tr><td style="padding:16px 20px">
+                  <div style="font:italic 400 16px/1.5 ${SERIF};color:${C.soft}">&ldquo;${esc(o.quote ?? quipFor())}&rdquo;</div>
+                  <div style="margin-top:6px;font:700 10px ${SANS};letter-spacing:.14em;text-transform:uppercase;color:${C.faint}">— The IIMA Marketplace desk</div>
                 </td></tr>
               </table>
             </td></tr>
@@ -215,7 +240,6 @@ export function renderEmail(o: RenderEmailOptions): string {
           <a href="${esc(marketplace)}" target="_blank" style="color:${C.brick};font-weight:600;text-decoration:none">Browse listings</a>
           &nbsp;·&nbsp;
           <a href="${esc(sellUrl())}" target="_blank" style="color:${C.brick};font-weight:600;text-decoration:none">Sell or rent an item</a>
-          ${o.manageUrl ? `&nbsp;·&nbsp;<a href="${esc(o.manageUrl)}" target="_blank" style="color:${C.muted};text-decoration:underline">Email preferences</a>` : ''}
           <br>
           The official student marketplace of IIM Ahmedabad · Built by Agile CCC
         </td></tr>
@@ -253,5 +277,3 @@ export const browseUrl = () => `${appBase()}/marketplace`;
 export const rentalsUrl = () => `${appBase()}/marketplace?type=RENTAL`;
 /** Absolute link to the create-listing page. */
 export const sellUrl = () => `${appBase()}/sell`;
-/** Absolute link to where a member manages notification preferences (dashboard). */
-export const preferencesUrl = () => `${appBase()}/dashboard?tab=Settings`;

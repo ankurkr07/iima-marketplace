@@ -1,7 +1,7 @@
 import { prisma } from '../../lib/prisma';
 import { env } from '../../config/env';
 import { isMailConfigured, sendBulk, sendMail } from '../../lib/mailer';
-import { renderEmail, productUrl, browseUrl, rentalsUrl, preferencesUrl, type EmailBlock } from '../../lib/emailTemplate';
+import { renderEmail, productUrl, browseUrl, rentalsUrl, quipFor, type EmailBlock } from '../../lib/emailTemplate';
 
 /**
  * Automated and admin-triggered marketplace email.
@@ -122,7 +122,7 @@ function digestHtml(products: DigestProduct[], since: Date, until: Date) {
     blocks: products.map(productBlock),
     cta: { label: 'Browse the marketplace', url: browseUrl() },
     secondaryCta: rentals > 0 ? { label: 'See rentals', url: rentalsUrl() } : undefined,
-    manageUrl: preferencesUrl(),
+    quote: quipFor(until),
   });
 }
 
@@ -145,7 +145,8 @@ function digestText(products: DigestProduct[], since: Date, until: Date) {
     ...lines,
     '',
     `Browse the marketplace: ${browseUrl()}`,
-    `Email preferences: ${preferencesUrl()}`,
+    '',
+    `"${quipFor(until)}"`,
   ].join('\n');
 }
 
@@ -340,7 +341,6 @@ export async function notifyWishlistStatusChange(
     blocks: [productBlock(product)],
     cta: { label: 'View item', url: productUrl(product.slug) },
     secondaryCta: { label: 'Browse similar', url: browseUrl() },
-    manageUrl: preferencesUrl(),
   });
   await sendBulk(emails, `Wishlist update: ${product.title}`, html);
 }

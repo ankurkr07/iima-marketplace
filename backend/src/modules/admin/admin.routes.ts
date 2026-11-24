@@ -6,7 +6,7 @@ import { requireAuth, requireRole } from '../../middleware/auth';
 import { prisma } from '../../lib/prisma';
 import { ApiError } from '../../utils/ApiError';
 import { isMailConfigured, sendBulk } from '../../lib/mailer';
-import { renderEmail, preferencesUrl } from '../../lib/emailTemplate';
+import { renderEmail } from '../../lib/emailTemplate';
 import { sendNewListingsDigest } from '../mail/mail.service';
 import { env } from '../../config/env';
 
@@ -183,7 +183,6 @@ adminRouter.post(
       intro: body,
       cta,
       preheader: body.slice(0, 120),
-      manageUrl: preferencesUrl(),
     });
     const result = await sendBulk(recipients, subject, html);
     res.json({ recipients: recipients.length, ...result, configured: isMailConfigured() });
